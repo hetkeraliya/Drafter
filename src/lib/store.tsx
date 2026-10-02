@@ -6,9 +6,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { mergeNotes, pullNotes, pushNotes, removeNotes } from "./cloud";
 import { SEED_NOTES } from "./seed";
+import { getSupabase } from "./supabase";
 import { todayKey } from "./thoughts";
 import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode, TypeScale } from "./types";
 
@@ -85,7 +89,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [undo, setUndo] = useState<Note | null>(null);
   const [undoLabel, setUndoLabel] = useState("");
-  const cloud = false;
+  const supa = useMemo(() => getSupabase(), []);
+  const cloud = Boolean(supa && user && !user.demo);
+  const pulledFor = useRef("");
+  const pushed = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     try {
@@ -116,6 +123,87 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     root.dataset.size = prefs.typeScale;
   }, [prefs, ready]);
 
+  // Real Supabase session -> app user. Demo/local users are never kicked out by this.
+  useEffect(() => {
+    if (!ready || !supa) return;
+    let active = true;
+
+    const apply = (session: Session | null) => {
+      const u = session?.user;
+      if (!u) return;
+      const meta = (u.user_metadata || {}) as { name?: string; full_name?: string };
+      const email = u.email || "";
+      const next: SessionUser = {
+        id: u.id,
+        email,
+        name: meta.name || meta.full_name || email.split("@")[0] || "You",
+        demo: false,
+      };
+      setUser(next);
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+    };
+
+    supa.auth.getSession().then(({ data }) => {
+      if (active) apply(data.session);
+    });
+    const { data: sub } = supa.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser((prev) => (prev && !prev.demo ? null : prev));
+      } else {
+        apply(session);
+      }
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [ready, supa]);
+
+  // First load after sign-in: pull cloud notes and merge with this device.
+  useEffect(() => {
+    if (!ready || !cloud || !supa || !user) return;
+    if (pulledFor.current === user.id) return;
+    pulledFor.current = user.id;
+    let active = true;
+    pullNotes(supa)
+      .then((remote) => {
+        if (active) setNotes((prev) => mergeNotes(prev, remote));
+      })
+      .catch((err) => {
+        console.warn("Draftr cloud pull failed", err);
+        pulledFor.current = "";
+      });
+    return () => {
+      active = false;
+    };
+  }, [ready, cloud, supa, user]);
+
+  // Push changes (debounced). Only runs after the first pull finished.
+  useEffect(() => {
+    if (!ready || !cloud || !supa || !user) return;
+    if (pulledFor.current !== user.id) return;
+    const userId = user.id;
+    const timer = window.setTimeout(async () => {
+      const changed: Note[] = [];
+      const seen = new Set<string>();
+      for (const note of notes) {
+        seen.add(note.id);
+        const sig = JSON.stringify(note);
+        if (pushed.current.get(note.id) !== sig) changed.push(note);
+      }
+      const gone = Array.from(pushed.current.keys()).filter((id) => !seen.has(id));
+      try {
+        await pushNotes(supa, userId, changed);
+        for (const note of changed) pushed.current.set(note.id, JSON.stringify(note));
+        await removeNotes(supa, userId, gone);
+        for (const id of gone) pushed.current.delete(id);
+      } catch (err) {
+        console.warn("Draftr cloud push failed", err);
+      }
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [notes, ready, cloud, supa, user]);
+
   const patchPrefs = useCallback((next: Partial<Prefs>) => {
     setPrefs((prev) => ({ ...prev, ...next }));
   }, []);
@@ -132,9 +220,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => {
+    const wasCloud = Boolean(supa && user && !user.demo);
+    pulledFor.current = "";
+    pushed.current = new Map();
     setUser(null);
     localStorage.removeItem(USER_KEY);
-  }, []);
+    if (wasCloud && supa) {
+      void supa.auth.signOut();
+      setNotes([]); // cloud copy stays safe; nothing left behind on a shared device
+    }
+  }, [supa, user]);
 
   const completeOnboarding = useCallback(() => {
     setOnboarded(true);
@@ -171,12 +266,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setUndoLabel("");
         }, 6000);
       }
-      return prev.map((n) => (n.id === id ? { ...n, deletedAt: new Date().toISOString() } : n));
+      const stamp = new Date().toISOString();
+      return prev.map((n) => (n.id === id ? { ...n, deletedAt: stamp, updatedAt: stamp } : n));
     });
   }, []);
 
   const restoreNote = useCallback((id: string) => {
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null } : n)));
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null, updatedAt: new Date().toISOString() } : n)));
   }, []);
 
   const purgeNote = useCallback((id: string) => {
@@ -186,7 +282,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const undoDelete = useCallback(() => {
     if (!undo) return;
     const id = undo.id;
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null } : n)));
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null, updatedAt: new Date().toISOString() } : n)));
     setUndo(null);
     setUndoLabel("");
   }, [undo]);
@@ -220,7 +316,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [mapItems]);
 
   const pinNote = useCallback((id: string) => {
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n)));
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned, updatedAt: new Date().toISOString() } : n)));
   }, []);
 
   const tagNote = useCallback((id: string, tag: string) => {
@@ -228,13 +324,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       prev.map((n) => {
         if (n.id !== id) return n;
         const tags = n.tags || [];
-        return { ...n, tags: tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag] };
+        return { ...n, tags: tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag], updatedAt: new Date().toISOString() };
       }),
     );
   }, []);
 
   const remindNote = useCallback((id: string, when: string | null) => {
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, remindAt: when } : n)));
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, remindAt: when, updatedAt: new Date().toISOString() } : n)));
     if (when && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().catch(() => {});
     }
