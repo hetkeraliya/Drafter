@@ -8,6 +8,7 @@ import { Segmented } from "@/components/Segmented";
 import { Spark } from "@/components/Spark";
 import { withViewTransition } from "@/lib/motion";
 import { useStore } from "@/lib/store";
+import { getSupabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const { signInDemo } = useStore();
@@ -17,19 +18,70 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [hint, setHint] = useState("");
+  const [busy, setBusy] = useState(false);
+  const supa = getSupabase();
 
   function go(displayName?: string, displayEmail?: string) {
     signInDemo(displayName || name || "You", displayEmail || email || "you@draftr.app");
     withViewTransition(() => router.push("/onboarding"));
   }
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (password.length < 4) {
-      setHint("Use at least 4 characters for this demo.");
+    setHint("");
+
+    if (!supa) {
+      if (password.length < 4) {
+        setHint("Use at least 4 characters for this demo.");
+        return;
+      }
+      go();
       return;
     }
-    go();
+
+    if (password.length < 6) {
+      setHint("Use at least 6 characters.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (mode === "in") {
+        const { error } = await supa.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+        withViewTransition(() => router.push("/notes"));
+      } else {
+        const { data, error } = await supa.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { data: { name: name.trim() || email.split("@")[0] }, emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        if (data.session) {
+          withViewTransition(() => router.push("/onboarding"));
+        } else {
+          setHint("Check your email and tap the confirmation link, then sign in.");
+          setMode("in");
+        }
+      }
+    } catch (err) {
+      setHint(err instanceof Error ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onGoogle() {
+    if (!supa) {
+      go("Google user", "google@draftr.app");
+      return;
+    }
+    setHint("");
+    const { error } = await supa.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) setHint(error.message);
   }
 
   return (
@@ -48,7 +100,9 @@ export default function LoginPage() {
         {mode === "in" ? "Welcome back" : "Create account"}
       </h1>
       <p className="mt-4 max-w-[38ch] text-sm text-[var(--muted)]">
-        Sign in with email, Google, or demo. Notes stay on this device until cloud is connected.
+        {supa
+          ? "Sign in with email or Google. Your notes sync across devices."
+          : "Sign in with email, Google, or demo. Notes stay on this device until cloud is connected."}
       </p>
 
       <div className="mt-9">
@@ -83,14 +137,14 @@ export default function LoginPage() {
           required
         />
         {hint && <p className="text-sm text-[var(--muted)]">{hint}</p>}
-        <button type="submit" className="btn w-full">
-          {mode === "in" ? "Sign in" : "Create account"}
+        <button type="submit" className="btn w-full" disabled={busy}>
+          {busy ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}
         </button>
       </form>
 
       <button
         type="button"
-        onClick={() => go("Google user", "google@draftr.app")}
+        onClick={onGoogle}
         className="card mt-3 flex min-h-12 w-full items-center justify-center gap-2 text-sm"
       >
         <GoogleMark /> Continue with Google
