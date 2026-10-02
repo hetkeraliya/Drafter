@@ -161,7 +161,7 @@ function NewNoteForm() {
             {sketchOpen && (
               <SketchPad
                 onSave={(url) => {
-                  setImages((prev) => [...prev, { id: newId(), kind: "sketch", url, name: "sketch.png" }].slice(0, 8));
+                  setImages((prev) => [...prev, { id: newId(), kind: "sketch" as const, url, name: "sketch.png" }].slice(0, 8));
                   setSketchOpen(false);
                 }}
               />
