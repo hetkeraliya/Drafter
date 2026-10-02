@@ -8,6 +8,7 @@ const KEY = "draftr.thought.library.v1";
 export interface SavedThought extends DailyThought {
   savedAt: string;
   gradient: string;
+  ink?: "light" | "dark";
 }
 
 export function useLibrary() {
@@ -27,9 +28,9 @@ export function useLibrary() {
     localStorage.setItem(KEY, JSON.stringify(next));
   }
 
-  function save(thought: DailyThought, gradient: string) {
+  function save(thought: DailyThought, gradient: string, ink: "light" | "dark" = "light") {
     if (items.some((item) => item.headline === thought.headline)) return;
-    write([{ ...thought, gradient, savedAt: new Date().toISOString() }, ...items]);
+    write([{ ...thought, gradient, ink, savedAt: new Date().toISOString() }, ...items]);
   }
 
   function remove(headline: string) {
