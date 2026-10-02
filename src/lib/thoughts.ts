@@ -66,6 +66,141 @@ const DAYS: Omit<DailyThought, "day">[] = [
     body: "A good note can be a question you are willing to sit with.",
     prompt: "What question are you carrying?",
   },
+  {
+    headline: "Write the messy version.",
+    body: "A rough page can be fixed. A blank page cannot. Start ugly and tidy up after.",
+    prompt: "What would you write if nobody read it?",
+  },
+  {
+    headline: "Small steps still move.",
+    body: "Ten quiet minutes today beat a perfect plan you never open.",
+    prompt: "What can you do in ten minutes?",
+  },
+  {
+    headline: "Name the worry.",
+    body: "A worry written down is smaller than a worry carried around.",
+    prompt: "What is taking up space in your head?",
+  },
+  {
+    headline: "Save the good ones.",
+    body: "Some ideas arrive once. Catch the line before it walks away.",
+    prompt: "Which idea almost slipped past you today?",
+  },
+  {
+    headline: "Rest is part of the work.",
+    body: "A pause is not a gap in your effort. It is where the next idea gets made.",
+    prompt: "What would a proper break look like today?",
+  },
+  {
+    headline: "Be a beginner on purpose.",
+    body: "Ask the plain question. Everyone in the room was waiting for someone to.",
+    prompt: "What are you afraid to ask?",
+  },
+  {
+    headline: "Finish one thing.",
+    body: "One closed loop gives more calm than ten open ones.",
+    prompt: "Which task is closest to done?",
+  },
+  {
+    headline: "Notice your wins.",
+    body: "You did more than you gave yourself credit for. Write it down so it stays true.",
+    prompt: "What went right this week?",
+  },
+  {
+    headline: "Say it simply.",
+    body: "If you can write it in one clear line, you understand it.",
+    prompt: "What is the one-line version of what you are working on?",
+  },
+  {
+    headline: "Change the view.",
+    body: "Move to another chair, another room, another page. Thoughts shift when you do.",
+    prompt: "Where could you think differently today?",
+  },
+  {
+    headline: "Keep a quiet list.",
+    body: "Things to try, places to see, people to call. A list like this is a gentle kind of hope.",
+    prompt: "What is on your someday list?",
+  },
+  {
+    headline: "Thank someone.",
+    body: "A two-line thank-you takes a minute and can carry for a week.",
+    prompt: "Who helped you lately?",
+  },
+  {
+    headline: "Let it be unfinished.",
+    body: "Not every note needs an ending. Some are just a place to rest an idea.",
+    prompt: "Which draft are you allowed to leave open?",
+  },
+  {
+    headline: "Start before ready.",
+    body: "Readiness shows up after you begin, not before.",
+    prompt: "What are you waiting to feel ready for?",
+  },
+  {
+    headline: "Look back, then forward.",
+    body: "Read one old note. Then write one line for the person who will read this next year.",
+    prompt: "What do you want future-you to remember?",
+  },
+  {
+    headline: "Choose the next right step.",
+    body: "You do not need the whole staircase. Only the next stair.",
+    prompt: "What is the next stair?",
+  },
+  {
+    headline: "Protect your focus.",
+    body: "One tab, one note, one task. The rest can wait ten minutes.",
+    prompt: "What can you close right now?",
+  },
+  {
+    headline: "Make it easy to begin.",
+    body: "Put the pen where you will see it. Open the note before you need it.",
+    prompt: "What would make starting easier tomorrow?",
+  },
+  {
+    headline: "Ask what you are learning.",
+    body: "A hard day still teaches something. Catch the lesson, leave the mood.",
+    prompt: "What did today teach you?",
+  },
+  {
+    headline: "Be kind in your notes.",
+    body: "Write to yourself the way you would write to a friend who is trying.",
+    prompt: "What would you tell a friend in your spot?",
+  },
+  {
+    headline: "Slow is smooth.",
+    body: "Careful pages age better than rushed ones. Take the extra breath.",
+    prompt: "Where could you slow down a little?",
+  },
+  {
+    headline: "Collect small joys.",
+    body: "Warm tea, a good song, a clean desk. Write three down before the day ends.",
+    prompt: "What are three small good things today?",
+  },
+  {
+    headline: "Try the other way.",
+    body: "When one approach stalls, change the question, not your effort.",
+    prompt: "What is another way to look at it?",
+  },
+  {
+    headline: "Plan the first hour.",
+    body: "Tomorrow gets easier when its first hour is already decided.",
+    prompt: "What will you do first tomorrow?",
+  },
+  {
+    headline: "Keep what matters.",
+    body: "Not everything needs saving. Keep the line that made you pause.",
+    prompt: "Which line deserves a place on your desk?",
+  },
+  {
+    headline: "Let curiosity lead.",
+    body: "Follow the odd question for five minutes. Some of your best notes start there.",
+    prompt: "What are you curious about right now?",
+  },
+  {
+    headline: "Begin again.",
+    body: "A new page is allowed any time of day, not only on Mondays.",
+    prompt: "What are you ready to restart?",
+  },
 ];
 
 export function gradientFor(seed: string) {
@@ -96,4 +231,10 @@ export function todayKey(date = new Date()) {
 
 export function thoughtCount() {
   return DAYS.length;
+}
+
+// Every curated thought, for the swipe deck's no-repeat shuffle.
+export function thoughtPool(date = new Date()): DailyThought[] {
+  const day = date.toISOString().slice(0, 10);
+  return DAYS.map((item) => ({ day, ...item }));
 }
