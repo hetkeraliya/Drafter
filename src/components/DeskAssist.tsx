@@ -30,7 +30,8 @@ export function DeskAssist() {
   const [apply, setApply] = useState<((text: string) => void) | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
-  useEffect(() => onDesk((request) => {
+  useEffect(() => {
+    const off = onDesk((request) => {
     setDraft(request.text || "");
     setText(request.text || "");
     setChat([]);
@@ -39,7 +40,11 @@ export function DeskAssist() {
     setApply(() => request.onApply || null);
     setStatus("Runs on this device. Notes stay here.");
     setOpen(true);
-  }), []);
+    });
+    return () => {
+      off();
+    };
+  }, []);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
