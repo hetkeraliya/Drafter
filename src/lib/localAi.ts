@@ -141,7 +141,9 @@ async function browser(onStatus?: (label: string) => void): Promise<Gen> {
   if (!loading || browserKey !== size) {
     browserKey = size;
     loading = (async () => {
-      const mod = await import(/* webpackIgnore: true */ "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2");
+      const moduleUrl = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod: any = await import(/* webpackIgnore: true */ moduleUrl);
       mod.env.allowLocalModels = false;
       mod.env.useBrowserCache = true;
       const pipe = await mod.pipeline("text2text-generation", MODELS[size], {
