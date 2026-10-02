@@ -18,11 +18,11 @@ export function Segmented<T extends string>({
     const root = wrap.current;
     if (!root) return;
 
-    function measure() {
+    const measure = () => {
       const active = root.querySelector<HTMLElement>('[aria-pressed="true"]');
       if (!active) return;
       setPill({ x: active.offsetLeft, w: active.offsetWidth });
-    }
+    };
 
     measure();
     const ro = new ResizeObserver(measure);
