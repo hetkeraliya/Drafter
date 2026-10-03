@@ -18,7 +18,9 @@ export function NoteRow({
   onToggle,
   onPin,
   onDelete,
+  index = 0,
 }: {
+  index?: number;
   note: Note;
   onToggle: (itemId: string) => void;
   onPin: () => void;
@@ -46,6 +48,7 @@ export function NoteRow({
 
   return (
     <SwipeRow
+      index={index}
       leading={[{ label: note.pinned ? "Unpin" : "Pin", icon: <PinIcon size={20} />, color: "var(--orange)", run: onPin }]}
       trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--red)", run: onDelete }]}
     >
