@@ -1,18 +1,17 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { AppIcon } from "@/components/AppIcon";
 import { GoogleMark } from "@/components/Icons";
-import { Phone } from "@/components/Phone";
+import { Screen } from "@/components/Screen";
 import { Segmented } from "@/components/Segmented";
-import { Spark } from "@/components/Spark";
-import { withViewTransition } from "@/lib/motion";
 import { useStore } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
+import { useNav } from "@/lib/useNav";
 
 export default function LoginPage() {
   const { signInDemo } = useStore();
-  const router = useRouter();
+  const nav = useNav();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +22,7 @@ export default function LoginPage() {
 
   function go(displayName?: string, displayEmail?: string) {
     signInDemo(displayName || name || "You", displayEmail || email || "you@draftr.app");
-    withViewTransition(() => router.push("/onboarding"));
+    nav.go("/onboarding");
   }
 
   async function onSubmit(e: FormEvent) {
@@ -49,7 +48,7 @@ export default function LoginPage() {
       if (mode === "in") {
         const { error } = await supa.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
-        withViewTransition(() => router.push("/notes"));
+        nav.go("/notes");
       } else {
         const { data, error } = await supa.auth.signUp({
           email: email.trim(),
@@ -58,7 +57,7 @@ export default function LoginPage() {
         });
         if (error) throw error;
         if (data.session) {
-          withViewTransition(() => router.push("/onboarding"));
+          nav.go("/onboarding");
         } else {
           setHint("Check your email and tap the confirmation link, then sign in.");
           setMode("in");
@@ -85,73 +84,74 @@ export default function LoginPage() {
   }
 
   return (
-    <Phone>
-      <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--ink)] text-[#fafafa]">
-          <Spark size={16} />
-        </div>
-        <div>
-          <p className="text-lg font-semibold tracking-[-0.03em]">Draftr</p>
-          <p className="text-xs text-[var(--muted)]">Studio 6</p>
-        </div>
+    <Screen bare>
+      <div className="flex flex-col items-center pt-6 text-center">
+        <AppIcon size={72} />
+        <h1 className="mt-5 text-[34px] font-bold leading-tight tracking-[-0.03em]">Draftr</h1>
+        <p className="mt-1 max-w-[32ch] text-[15px] text-[var(--muted)]">
+          {supa ? "Sign in to sync your notes across devices." : "Sign in, or try demo mode. Notes stay on this device."}
+        </p>
       </div>
 
-      <h1 key={mode} className="swap mt-14 text-[40px] font-semibold leading-[0.98] tracking-[-0.055em]">
-        {mode === "in" ? "Welcome back" : "Create account"}
-      </h1>
-      <p className="mt-4 max-w-[38ch] text-sm text-[var(--muted)]">
-        {supa
-          ? "Sign in with email or Google. Your notes sync across devices."
-          : "Sign in with email, Google, or demo. Notes stay on this device until cloud is connected."}
-      </p>
-
-      <div className="mt-9">
+      <div className="mt-8">
         <Segmented
           items={[
-            { id: "in", label: "Sign in" },
-            { id: "up", label: "Create account" },
+            { id: "in", label: "Sign In" },
+            { id: "up", label: "Create Account" },
           ]}
           value={mode}
           onChange={setMode}
         />
       </div>
 
-      <form onSubmit={onSubmit} className="mt-5 space-y-2.5">
-        {mode === "up" && (
-          <input className="field swap" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        )}
-        <input
-          className="field"
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          className="field"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {hint && <p className="text-sm text-[var(--muted)]">{hint}</p>}
-        <button type="submit" className="btn w-full" disabled={busy}>
-          {busy ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}
+      <form onSubmit={onSubmit} className="mt-5">
+        <div className="group">
+          {mode === "up" && (
+            <label className="cell">
+              <span className="w-20 flex-none">Name</span>
+              <input className="field" autoComplete="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+          )}
+          <label className="cell">
+            <span className="w-20 flex-none">Email</span>
+            <input
+              className="field"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </label>
+          <label className="cell">
+            <span className="w-20 flex-none">Password</span>
+            <input
+              className="field"
+              type="password"
+              autoComplete={mode === "in" ? "current-password" : "new-password"}
+              placeholder="Required"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+        </div>
+        {hint && <p className="group-foot text-[var(--muted)]">{hint}</p>}
+        <button type="submit" className="btn mt-5 w-full" disabled={busy}>
+          {busy ? "Please wait…" : mode === "in" ? "Sign In" : "Create Account"}
         </button>
       </form>
 
-      <button
-        type="button"
-        onClick={onGoogle}
-        className="card mt-3 flex min-h-12 w-full items-center justify-center gap-2 text-sm"
-      >
+      <button type="button" onClick={onGoogle} className="btn btn-quiet mt-3 w-full !text-[var(--ink)]">
         <GoogleMark /> Continue with Google
       </button>
-      <button type="button" onClick={() => go("Demo", "demo@draftr.app")} className="btn-ghost mt-1 w-full">
+      <button type="button" onClick={() => go("Demo", "demo@draftr.app")} className="btn-plain mt-2 w-full">
         Continue in demo mode
       </button>
-    </Phone>
+    </Screen>
   );
 }
