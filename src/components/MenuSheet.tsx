@@ -1,19 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import { openDesk } from "@/lib/deskBus";
 import { downloadText } from "@/lib/share";
 import { useStore } from "@/lib/store";
-import { withViewTransition } from "@/lib/motion";
+import { useNav } from "@/lib/useNav";
 import { isStandalone, type BeforeInstallPromptEvent } from "@/lib/pwa";
+import type { PaperTheme } from "@/lib/types";
+import {
+  ChevronRight,
+  DownloadAppIcon,
+  DownloadIcon,
+  InfoIcon,
+  PhotoIcon,
+  SparkleIcon,
+  TrashIcon,
+} from "./Icons";
+import { Segmented } from "./Segmented";
+import { Sheet } from "./Sheet";
 
+const THEMES: { id: PaperTheme; label: string }[] = [
+  { id: "system", label: "System" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
+
+function Row({
+  icon,
+  color,
+  label,
+  detail,
+  chevron = true,
+  onClick,
+}: {
+  icon: ReactNode;
+  color: string;
+  label: string;
+  detail?: string;
+  chevron?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="cell" onClick={onClick}>
+      <span className="cell-icon" style={{ background: color }}>
+        {icon}
+      </span>
+      <span className="flex-1">{label}</span>
+      {detail && <span className="text-[var(--muted)]">{detail}</span>}
+      {chevron && (
+        <span className="text-[var(--faint)]">
+          <ChevronRight />
+        </span>
+      )}
+    </button>
+  );
+}
+
+// No open/close animation on purpose: the menu appears and disappears instantly.
 export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user, signOut, resetDemo, notes, prefs, setTheme, setTypeScale, trash } = useStore();
-  const router = useRouter();
-  const [shown, setShown] = useState(open);
-  const [leaving, setLeaving] = useState(false);
+  const { user, signOut, loadSamples, notes, prefs, setTheme, trash } = useStore();
+  const nav = useNav();
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
 
@@ -35,146 +81,119 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
     };
   }, []);
 
-  useEffect(() => {
-    if (open) {
-      setShown(true);
-      setLeaving(false);
-      return;
-    }
-    if (!shown) return;
-    setLeaving(true);
-    const t = window.setTimeout(() => {
-      setShown(false);
-      setLeaving(false);
-    }, 220);
-    return () => window.clearTimeout(t);
-  }, [open, shown]);
+  const name = user?.name || "Guest";
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
-  if (!shown) return null;
-  const out = leaving ? "out" : "";
+  const go = (href: string) => {
+    onClose();
+    nav.go(href);
+  };
 
   return (
-    <div className="fixed inset-0 z-30" role="dialog" aria-modal="true" aria-label="Menu">
-      <button type="button" className={`veil ${out} absolute inset-0 bg-[var(--ink)]/25`} onClick={onClose} aria-label="Close menu" />
-      <div className={`card panel ${out} absolute right-4 top-16 max-h-[80vh] w-[min(300px,calc(100vw-2rem))] overflow-auto`}>
-        <div className="row border-b border-[var(--line)] px-4 py-4" style={{ ["--i" as string]: 0 }}>
-          <p className="text-sm font-medium">{user?.name || "Guest"}</p>
-          <p className="mt-0.5 text-[13px] text-[var(--muted)]">{user?.email || "demo@draftr.app"}</p>
-          <p className="mt-2 text-[12px] text-[var(--muted)]">
-            {prefs.streak ? `${prefs.streak}-day writing streak` : "Write today to start a streak"}
-          </p>
-        </div>
-        <div className="p-1.5">
-          <Link
-            href="/about"
-            onClick={(e) => {
-              e.preventDefault();
-              onClose();
-              withViewTransition(() => router.push("/about"));
-            }}
-            className="row block rounded-[10px] px-3 py-3 text-sm hover:bg-[var(--soft)]"
-          >
-            About
-          </Link>
-          <Link
-            href="/motion"
-            onClick={(e) => {
-              e.preventDefault();
-              onClose();
-              withViewTransition(() => router.push("/motion"));
-            }}
-            className="row block rounded-[10px] px-3 py-3 text-sm hover:bg-[var(--soft)]"
-          >
-            Motion
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              openDesk({ text: "" });
-            }}
-            className="row block w-full rounded-[10px] px-3 py-3 text-left text-sm hover:bg-[var(--soft)]"
-          >
-            Desk assistant
-          </button>
-          <Link
-            href="/trash"
-            onClick={(e) => {
-              e.preventDefault();
-              onClose();
-              withViewTransition(() => router.push("/trash"));
-            }}
-            className="row block rounded-[10px] px-3 py-3 text-sm hover:bg-[var(--soft)]"
-          >
-            Trash ({trash.length})
-          </Link>
-          {!installed && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (installEvent) {
-                  await installEvent.prompt();
-                  setInstallEvent(null);
-                }
-                onClose();
-              }}
-              className="row block w-full rounded-[10px] px-3 py-3 text-left text-sm hover:bg-[var(--soft)]"
-            >
-              {installEvent ? "Install app" : "Add to Home Screen"}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setTheme(prefs.theme === "dark" ? "light" : "dark")}
-            className="row block w-full rounded-[10px] px-3 py-3 text-left text-sm hover:bg-[var(--soft)]"
-          >
-            {prefs.theme === "dark" ? "Light paper" : "Dark paper"}
-          </button>
-          <div className="row flex gap-1 px-3 py-2">
-            {(["sm", "md", "lg"] as const).map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setTypeScale(size)}
-                className={`min-h-9 flex-1 rounded-[10px] text-xs ${prefs.typeScale === size ? "bg-[var(--ink)] text-[#fafafa]" : "bg-[var(--soft)]"}`}
-              >
-                {size.toUpperCase()}
-              </button>
-            ))}
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Draftr"
+      animate={false}
+      action={
+        <button type="button" className="nav-btn strong" onClick={onClose}>
+          Done
+        </button>
+      }
+    >
+      <div className="group">
+        <div className="cell">
+          <span className="grid h-14 w-14 flex-none place-items-center rounded-full bg-[var(--tint)] text-[22px] font-semibold text-white">
+            {initials || "D"}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[17px] font-semibold">{name}</p>
+            <p className="truncate text-[15px] text-[var(--muted)]">{user?.email || "demo@draftr.app"}</p>
+            <p className="mt-0.5 text-[13px] text-[var(--muted)]">
+              {prefs.streak ? `${prefs.streak}-day writing streak` : "Write today to start a streak"}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              downloadText("draftr-notes.txt", notes.map((n) => `# ${n.title}\n${n.body}`).join("\n\n"));
-              onClose();
-            }}
-            className="row block w-full rounded-[10px] px-3 py-3 text-left text-sm hover:bg-[var(--soft)]"
-          >
-            Export all notes
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              resetDemo();
-              onClose();
-            }}
-            className="row block w-full rounded-[10px] px-3 py-3 text-left text-sm hover:bg-[var(--soft)]"
-          >
-            Load sample notes
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              signOut();
-              onClose();
-              withViewTransition(() => router.push("/login"));
-            }}
-            className="row block w-full rounded-[10px] px-3 py-3 text-left text-sm text-[var(--muted)] hover:bg-[var(--soft)]"
-          >
-            Sign out
-          </button>
         </div>
       </div>
-    </div>
+
+      <p className="group-label">Appearance</p>
+      <div className="group p-3">
+        <Segmented items={THEMES} value={prefs.theme} onChange={setTheme} />
+      </div>
+
+      <div className="group mt-6">
+        <Row
+          icon={<SparkleIcon size={18} />}
+          color="var(--purple)"
+          label="Desk assistant"
+          onClick={() => {
+            onClose();
+            openDesk({ text: "" });
+          }}
+        />
+        <Row icon={<TrashIcon size={18} />} color="var(--red)" label="Trash" detail={trash.length ? String(trash.length) : ""} onClick={() => go("/trash")} />
+        <Row icon={<InfoIcon size={18} />} color="#8e8e93" label="About" onClick={() => go("/about")} />
+      </div>
+
+      <div className="group mt-6">
+        <Row
+          icon={<DownloadIcon size={18} />}
+          color="var(--green)"
+          label="Export all notes"
+          chevron={false}
+          onClick={() => {
+            downloadText("draftr-notes.txt", notes.map((n) => `# ${n.title}\n${n.body}`).join("\n\n"));
+            onClose();
+          }}
+        />
+        <Row
+          icon={<PhotoIcon size={18} />}
+          color="var(--orange)"
+          label="Load sample notes"
+          chevron={false}
+          onClick={() => {
+            loadSamples();
+            onClose();
+          }}
+        />
+        {!installed && (
+          <Row
+            icon={<DownloadAppIcon size={18} />}
+            color="var(--tint)"
+            label={installEvent ? "Install app" : "Add to Home Screen"}
+            chevron={false}
+            onClick={async () => {
+              if (installEvent) {
+                await installEvent.prompt();
+                setInstallEvent(null);
+              }
+              onClose();
+            }}
+          />
+        )}
+      </div>
+
+      <div className="group mt-6">
+        <button
+          type="button"
+          className="cell justify-center font-medium text-[var(--red)]"
+          onClick={() => {
+            signOut();
+            onClose();
+            nav.go("/login", "back");
+          }}
+        >
+          Sign Out
+        </button>
+      </div>
+      <p className="group-foot text-center">
+        {notes.length} {notes.length === 1 ? "note" : "notes"} on this device
+      </p>
+    </Sheet>
   );
 }
