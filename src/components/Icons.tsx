@@ -64,7 +64,7 @@ export const SearchIcon = ({ size = 16 }: P) => (
 export const XCircleIcon = ({ size = 16 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
     <circle cx="12" cy="12" r="10" fill="currentColor" />
-    <path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="var(--bg)" strokeWidth="2.2" strokeLinecap="round" />
   </svg>
 );
 
