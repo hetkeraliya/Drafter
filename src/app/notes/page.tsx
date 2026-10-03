@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Fab } from "@/components/Fab";
+import { ChevronRight, EllipsisIcon, SearchIcon, XCircleIcon } from "@/components/Icons";
 import { MenuSheet } from "@/components/MenuSheet";
-import { NoteCard } from "@/components/NoteCard";
-import { Phone } from "@/components/Phone";
+import { NoteRow } from "@/components/NoteRow";
+import { Screen } from "@/components/Screen";
 import { Segmented } from "@/components/Segmented";
-import { Spark } from "@/components/Spark";
-import { TAGS } from "@/lib/templates";
-import { withViewTransition } from "@/lib/motion";
+import { sectionize } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { useLiveThought } from "@/lib/useLiveThought";
+import { TAGS } from "@/lib/templates";
+import { gradientFor } from "@/lib/thoughts";
 import type { Tab } from "@/lib/types";
+import { useLiveThought } from "@/lib/useLiveThought";
+import { useNav } from "@/lib/useNav";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "All" },
@@ -21,13 +22,19 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "imported", label: "Imported" },
 ];
 
+const SORTS = [
+  { id: "new", label: "Newest" },
+  { id: "old", label: "Oldest" },
+  { id: "type", label: "Type" },
+] as const;
+
 export default function NotesPage() {
-  const { ready, notes, toggleItem, prefs, setSort, pinNote, remindNote } = useStore();
+  const { ready, notes, toggleItem, prefs, setSort, pinNote, remindNote, deleteNote, loadSamples } = useStore();
   const [tab, setTab] = useState<Tab>("all");
   const [menu, setMenu] = useState(false);
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
-  const router = useRouter();
+  const nav = useNav();
   const { thought: daily, status } = useLiveThought();
 
   useEffect(() => {
@@ -38,7 +45,7 @@ export default function NotesPage() {
         remindNote(note.id, null);
       }
     });
-  }, [ready, notes]);
+  }, [ready, notes, remindNote]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,101 +62,121 @@ export default function NotesPage() {
           n.items.some((item) => item.label.toLowerCase().includes(q)),
       );
     }
-    const sorted = [...list].sort((a, b) => {
-      if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+    return [...list].sort((a, b) => {
       if (prefs.sort === "old") return a.updatedAt.localeCompare(b.updatedAt);
       if (prefs.sort === "type") return a.type.localeCompare(b.type) || b.updatedAt.localeCompare(a.updatedAt);
       return b.updatedAt.localeCompare(a.updatedAt);
     });
-    return sorted;
   }, [notes, tab, query, tag, prefs.sort]);
+
+  const sections = useMemo(() => sectionize(filtered, prefs.sort), [filtered, prefs.sort]);
 
   if (!ready) return null;
 
+  const searching = query.trim() !== "" || tag !== "" || tab !== "all";
+
   return (
-    <Phone wide>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--ink)] text-[#fafafa]">
-            <Spark size={15} />
-          </span>
-          <p className="text-[17px] font-semibold tracking-[-0.03em]">Draftr</p>
-        </div>
-        <button type="button" onClick={() => setMenu(true)} className="btn-ghost min-h-11 text-sm">
-          Menu
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => withViewTransition(() => router.push("/thought"))}
-        className="card tilt mt-8 w-full p-5 text-left"
+    <>
+      <Screen
+        title="Notes"
+        large
+        trailing={
+          <button type="button" className="nav-btn" onClick={() => setMenu(true)} aria-label="Menu">
+            <EllipsisIcon size={28} />
+          </button>
+        }
+        footer={<Fab count={notes.length} streak={prefs.streak} />}
       >
-        <p className="meta">Today’s Thought</p>
-        <p className="mt-2 max-w-[20ch] text-[22px] font-semibold leading-tight tracking-[-0.04em]">{daily.headline}</p>
-        <p className="mt-2 line-clamp-2 text-sm text-[var(--muted)]">{daily.body}</p>
-        <p className="mt-3 text-[11px] text-[var(--muted)]">
-          {status === "loading" ? "Looking up today’s line…" : status === "live" ? `Fresh today${daily.source ? ` · ${daily.source}` : ""}` : "Saved on this device"}
-        </p>
-      </button>
-
-      <div className="rise-late mt-8">
-        <h1 className="text-[48px] font-semibold leading-none tracking-[-0.06em]">Notes</h1>
-        <p className="mt-3 text-sm text-[var(--muted)]">
-          {notes.length} saved on this device
-          {prefs.streak ? ` · ${prefs.streak}-day streak` : ""}
-        </p>
-      </div>
-
-      <input
-        className="field mt-6"
-        placeholder="Search notes"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {(["new", "old", "type"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setSort(mode)}
-            className={`chip ${prefs.sort === mode ? "bg-[var(--ink)] text-[#fafafa]" : ""}`}
-          >
-            {mode === "new" ? "Newest" : mode === "old" ? "Oldest" : "Type"}
-          </button>
-        ))}
-        {TAGS.map((item) => (
-          <button key={item} type="button" onClick={() => setTag(tag === item ? "" : item)} className={`chip ${tag === item ? "bg-[var(--ink)] text-[#fafafa]" : ""}`}>
-            {item}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6">
-        <Segmented items={TABS} value={tab} onChange={setTab} />
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="card tile mt-8 px-6 py-16 text-center">
-          <p className="text-[28px] font-semibold tracking-[-0.045em]">{tab === "todo" ? "No lists yet" : tab === "images" ? "No photos yet" : tab === "imported" ? "No files yet" : "Nothing here yet"}</p>
-          <p className="mx-auto mt-2 max-w-[36ch] text-sm text-[var(--muted)]">Add a note, list, photo, voice memo, or file.</p>
-          <button type="button" onClick={() => withViewTransition(() => router.push("/notes/new?type=text"))} className="btn mt-7">
-            New note
-          </button>
+        <div className="search">
+          <span className="glass">
+            <SearchIcon />
+          </span>
+          <input
+            type="search"
+            enterKeyHint="search"
+            autoCorrect="off"
+            placeholder="Search"
+            aria-label="Search notes"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button type="button" className="clear" onClick={() => setQuery("")} aria-label="Clear search">
+              <XCircleIcon size={16} />
+            </button>
+          )}
         </div>
-      ) : (
-        <div key={`${tab}-${prefs.sort}-${tag}`} className="mt-6 columns-1 gap-3 sm:columns-2 xl:columns-3">
-          {filtered.map((note, i) => (
-            <div key={note.id} className="tile mb-3 break-inside-avoid" style={{ ["--i" as string]: i }}>
-              <NoteCard note={note} onToggle={(itemId) => toggleItem(note.id, itemId)} onPin={() => pinNote(note.id)} />
-            </div>
+
+        <button
+          type="button"
+          onClick={() => nav.go("/thought")}
+          className="press relative mt-4 block w-full overflow-hidden rounded-[20px] p-5 text-left text-white"
+          style={{ background: gradientFor(daily.headline) }}
+        >
+          <p className="text-[13px] font-semibold opacity-75">Today’s Thought</p>
+          <p className="mt-1.5 text-[24px] font-bold leading-[1.14] tracking-[-0.03em]">{daily.headline}</p>
+          <p className="mt-2 line-clamp-2 text-[15px] leading-snug opacity-85">{daily.body}</p>
+          <p className="mt-3 flex items-center gap-0.5 text-[13px] font-medium opacity-80">
+            {status === "loading" ? "Finding today’s line…" : "Swipe through more thoughts"}
+            <ChevronRight size={13} />
+          </p>
+        </button>
+
+        <div className="mt-5">
+          <Segmented items={TABS} value={tab} onChange={setTab} />
+        </div>
+
+        <div className="chips mt-3">
+          {SORTS.map((mode) => (
+            <button key={mode.id} type="button" className="chip" aria-pressed={prefs.sort === mode.id} onClick={() => setSort(mode.id)}>
+              {mode.label}
+            </button>
+          ))}
+          <span className="mx-1 my-1.5 w-px flex-none bg-[var(--line)]" aria-hidden />
+          {TAGS.map((item) => (
+            <button key={item} type="button" className="chip" aria-pressed={tag === item} onClick={() => setTag(tag === item ? "" : item)}>
+              {item}
+            </button>
           ))}
         </div>
-      )}
 
-      <Fab />
+        {filtered.length === 0 ? (
+          <div className="fade-up px-6 pb-10 pt-20 text-center">
+            <p className="text-[22px] font-bold tracking-[-0.025em]">{searching ? "No Results" : "No Notes"}</p>
+            <p className="mx-auto mt-1.5 max-w-[30ch] text-[15px] text-[var(--muted)]">
+              {searching ? "Try a different search, tab or tag." : "Write a note, make a list, or add a photo, voice memo or file."}
+            </p>
+            {!searching && (
+              <div className="mt-6 flex flex-col items-center gap-1">
+                <button type="button" className="btn btn-sm" onClick={() => nav.go("/notes/new?type=text", "up")}>
+                  New Note
+                </button>
+                <button type="button" className="btn-plain" onClick={loadSamples}>
+                  Load sample notes
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          sections.map((section) => (
+            <section key={section.key}>
+              <h2 className="group-title">{section.title}</h2>
+              <div className="group">
+                {section.notes.map((note) => (
+                  <NoteRow
+                    key={note.id}
+                    note={note}
+                    onToggle={(itemId) => toggleItem(note.id, itemId)}
+                    onPin={() => pinNote(note.id)}
+                    onDelete={() => deleteNote(note.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </Screen>
       <MenuSheet open={menu} onClose={() => setMenu(false)} />
-    </Phone>
+    </>
   );
 }
