@@ -206,10 +206,9 @@ const DAYS: Omit<DailyThought, "day">[] = [
 export function gradientFor(seed: string) {
   let hash = 0;
   for (const char of seed) hash = (hash * 33 + char.charCodeAt(0)) % 360;
-  const a = hash;
-  const b = (hash + 36) % 360;
-  const c = (hash + 78) % 360;
-  return `radial-gradient(120% 80% at 15% 10%, hsl(${b} 62% 62% / 0.85), transparent 55%), linear-gradient(165deg, hsl(${a} 42% 22%), hsl(${b} 46% 38%) 48%, hsl(${c} 38% 16%))`;
+  const x = 15 + (hash % 70);
+  const y = 10 + ((hash * 7) % 60);
+  return `radial-gradient(70% 55% at ${x}% ${y}%, rgba(255,255,255,0.3), transparent 70%), linear-gradient(${120 + (hash % 100)}deg, #000000, #181818 60%, #050505)`;
 }
 
 export function thoughtForDate(date = new Date()): DailyThought {
