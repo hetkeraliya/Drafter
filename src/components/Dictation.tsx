@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { speechSupported, startDictation } from "@/lib/speech";
+import { MicIcon } from "./Icons";
 
 export function Dictation({
   onFinal,
-  label = "Speak to write",
+  label = "Dictate",
 }: {
   onFinal: (text: string) => void;
   label?: string;
@@ -36,11 +37,11 @@ export function Dictation({
   }
 
   return (
-    <div className="space-y-2">
-      <button type="button" onClick={toggle} className={`btn-ghost -ml-3 ${on ? "text-[var(--accent)]" : ""}`}>
-        {on ? "Stop listening" : label}
+    <div>
+      <button type="button" onClick={toggle} className={`btn btn-sm ${on ? "rec-live !bg-[var(--red)] !text-white" : "btn-quiet"}`}>
+        <MicIcon size={16} /> {on ? "Stop" : label}
       </button>
-      {live && <p className="text-sm text-[var(--muted)]">{live}</p>}
+      {live && <p className="mt-2 text-[15px] text-[var(--muted)]">{live}</p>}
     </div>
   );
 }
