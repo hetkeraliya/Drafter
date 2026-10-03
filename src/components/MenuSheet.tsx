@@ -108,7 +108,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
     >
       <div className="group">
         <div className="cell">
-          <span className="grid h-14 w-14 flex-none place-items-center rounded-full bg-[var(--tint)] text-[22px] font-semibold text-white">
+          <span className="grid h-14 w-14 flex-none place-items-center rounded-full bg-[image:var(--g-brand)] text-[22px] font-semibold text-white shadow-[var(--glow)]">
             {initials || "D"}
           </span>
           <div className="min-w-0">
@@ -129,21 +129,21 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
       <div className="group mt-6">
         <Row
           icon={<SparkleIcon size={18} />}
-          color="var(--purple)"
+          color="var(--g-violet)"
           label="Desk assistant"
           onClick={() => {
             onClose();
             openDesk({ text: "" });
           }}
         />
-        <Row icon={<TrashIcon size={18} />} color="var(--red)" label="Trash" detail={trash.length ? String(trash.length) : ""} onClick={() => go("/trash")} />
-        <Row icon={<InfoIcon size={18} />} color="#8e8e93" label="About" onClick={() => go("/about")} />
+        <Row icon={<TrashIcon size={18} />} color="var(--g-red)" label="Trash" detail={trash.length ? String(trash.length) : ""} onClick={() => go("/trash")} />
+        <Row icon={<InfoIcon size={18} />} color="var(--g-cyan)" label="About" onClick={() => go("/about")} />
       </div>
 
       <div className="group mt-6">
         <Row
           icon={<DownloadIcon size={18} />}
-          color="var(--green)"
+          color="var(--g-green)"
           label="Export all notes"
           chevron={false}
           onClick={() => {
@@ -153,7 +153,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
         />
         <Row
           icon={<PhotoIcon size={18} />}
-          color="var(--orange)"
+          color="var(--g-orange)"
           label="Load sample notes"
           chevron={false}
           onClick={() => {
@@ -164,7 +164,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
         {!installed && (
           <Row
             icon={<DownloadAppIcon size={18} />}
-            color="var(--tint)"
+            color="var(--g-brand)"
             label={installEvent ? "Install app" : "Add to Home Screen"}
             chevron={false}
             onClick={async () => {
