@@ -49,8 +49,8 @@ export function NoteRow({
   return (
     <SwipeRow
       index={index}
-      leading={[{ label: note.pinned ? "Unpin" : "Pin", icon: <PinIcon size={20} />, color: "var(--orange)", run: onPin }]}
-      trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--red)", run: onDelete }]}
+      leading={[{ label: note.pinned ? "Unpin" : "Pin", icon: <PinIcon size={20} />, color: "var(--fill-strong)", text: "var(--ink)", run: onPin }]}
+      trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--ink)", text: "var(--paper)", run: onDelete }]}
     >
       <div
         role="link"
@@ -64,7 +64,7 @@ export function NoteRow({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-[17px] font-semibold leading-snug">
             {note.pinned && (
-              <span className="flex-none text-[var(--orange)]">
+              <span className="flex-none text-[var(--ink)]">
                 <PinFilledIcon size={12} />
               </span>
             )}
