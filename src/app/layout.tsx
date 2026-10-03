@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#eceefc" },
+    { media: "(prefers-color-scheme: dark)", color: "#07070f" },
   ],
   colorScheme: "light dark",
   viewportFit: "cover",
@@ -40,7 +40,7 @@ export const viewport: Viewport = {
 };
 
 // Runs before first paint so a saved Light/Dark choice never flashes the wrong theme.
-const THEME_BOOT = `try{var p=JSON.parse(localStorage.getItem("draftr.prefs.v8")||"{}");if(p.theme==="light"||p.theme==="dark"){document.documentElement.dataset.theme=p.theme;var c=p.theme==="dark"?"#000000":"#f2f2f7";document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",c)})}}catch(e){}`;
+const THEME_BOOT = `try{var p=JSON.parse(localStorage.getItem("draftr.prefs.v8")||"{}");if(p.theme==="light"||p.theme==="dark"){document.documentElement.dataset.theme=p.theme;var c=p.theme==="dark"?"#07070f":"#eceefc";document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",c)})}}catch(e){}`;
 
 export default function RootLayout({
   children,
@@ -51,6 +51,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body className="antialiased">
+        <div className="ambient" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </div>
         <StoreProvider>
           <PwaRegister />
           <NavBridge />
