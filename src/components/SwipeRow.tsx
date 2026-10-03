@@ -18,10 +18,12 @@ export function SwipeRow({
   children,
   leading = [],
   trailing = [],
+  index = 0,
 }: {
   children: ReactNode;
   leading?: SwipeAction[];
   trailing?: SwipeAction[];
+  index?: number;
 }) {
   const [x, setX] = useState(0);
   const [drag, setDrag] = useState(false);
@@ -109,9 +111,9 @@ export function SwipeRow({
   };
 
   return (
-    <div ref={root} className="row-wrap">
+    <div ref={root} className="row-wrap" style={{ "--i": index } as React.CSSProperties}>
       {leading.length > 0 && (
-        <div className="row-actions" style={{ left: 0, width: Math.max(maxL, x > 0 ? x : 0) }}>
+        <div className="row-actions" style={{ left: 0, width: x > 0 ? x : 0 }}>
           {leading.map((a) => (
             <button key={a.label} type="button" style={{ background: a.color }} onClick={() => act(a)} tabIndex={x > 0 ? 0 : -1}>
               {a.icon}
@@ -121,7 +123,7 @@ export function SwipeRow({
         </div>
       )}
       {trailing.length > 0 && (
-        <div className="row-actions" style={{ right: 0, width: Math.max(maxR, x < 0 ? -x : 0) }}>
+        <div className="row-actions" style={{ right: 0, width: x < 0 ? -x : 0 }}>
           {trailing.map((a) => (
             <button key={a.label} type="button" style={{ background: a.color }} onClick={() => act(a)} tabIndex={x < 0 ? 0 : -1}>
               {a.icon}
