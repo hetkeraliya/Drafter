@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { MenuSheet } from "@/components/MenuSheet";
+import { Sheet } from "@/components/Sheet";
 import { SwipeCard, type FlyFn } from "@/components/SwipeCard";
-import { withViewTransition } from "@/lib/motion";
+import { EllipsisIcon, ChevronLeft } from "@/components/Icons";
 import { newId, useStore } from "@/lib/store";
+import { useNav } from "@/lib/useNav";
 import { useLibrary } from "@/lib/useLibrary";
 import { useThoughtDeck, type ThoughtCard } from "@/lib/useThoughtDeck";
 import type { DailyThought } from "@/lib/types";
@@ -25,7 +26,7 @@ function headlineSize(text: string) {
 export default function ThoughtPage() {
   const { ready, upsertNote } = useStore();
   const library = useLibrary();
-  const router = useRouter();
+  const nav = useNav();
   const { cards, shown, advance } = useThoughtDeck();
   const [menu, setMenu] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -93,11 +94,11 @@ export default function ThoughtPage() {
       updatedAt: now,
       tags: ["ideas"],
     });
-    withViewTransition(() => router.push(`/notes/${id}`));
+    nav.go(`/notes/${id}`);
   }
 
   return (
-    <div className="relative h-dvh overflow-hidden bg-[#0b0d12] text-white">
+    <div className="relative h-dvh overflow-hidden bg-black text-white">
       {top && (
         <div
           aria-hidden
@@ -106,33 +107,33 @@ export default function ThoughtPage() {
         />
       )}
 
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-4 pt-4">
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-4 pt-[max(16px,env(safe-area-inset-top))]">
         <button
           type="button"
-          onClick={() => withViewTransition(() => router.push("/notes"))}
-          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-black/30 text-xl backdrop-blur"
+          onClick={() => nav.back("/notes")}
+          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-xl"
           aria-label="Back to notes"
         >
-          ‹
+          <ChevronLeft size={22} />
         </button>
         <button
           type="button"
           onClick={() => setShowLibrary(true)}
-          className="pointer-events-auto rounded-full bg-black/30 px-4 py-2 text-sm backdrop-blur"
+          className="pointer-events-auto min-h-11 rounded-full bg-white/15 px-4 text-[15px] font-medium text-white backdrop-blur-xl"
         >
-          Library {library.items.length}
+          Library{library.items.length ? ` · ${library.items.length}` : ""}
         </button>
         <button
           type="button"
           onClick={() => setMenu(true)}
-          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-black/30 backdrop-blur"
+          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-xl"
           aria-label="Menu"
         >
-          ···
+          <EllipsisIcon size={26} />
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-14 top-[72px] flex justify-center px-5">
+      <div className="absolute inset-x-0 flex justify-center px-5" style={{ top: "calc(env(safe-area-inset-top) + 64px)", bottom: "calc(env(safe-area-inset-bottom) + 52px)" }}>
         <div className="relative h-full max-h-[700px] w-full max-w-[420px] self-center">
           {cards.slice(0, 3).map((card, depth) => {
             const c = palette(card.ink);
@@ -163,7 +164,7 @@ export default function ThoughtPage() {
                   <button
                     type="button"
                     onClick={() => keep(card)}
-                    className="rounded-full px-4 py-2 text-sm font-medium"
+                    className="min-h-10 rounded-full px-5 text-[15px] font-semibold"
                     style={{ background: c.main, color: c.on }}
                   >
                     {saved ? "Saved" : "Save"}
@@ -171,7 +172,7 @@ export default function ThoughtPage() {
                   <button
                     type="button"
                     onClick={() => write(card)}
-                    className="rounded-full px-4 py-2 text-sm"
+                    className="min-h-10 rounded-full px-5 text-[15px] font-medium"
                     style={{ background: c.chip, color: c.main }}
                   >
                     Write
@@ -186,42 +187,42 @@ export default function ThoughtPage() {
         </div>
       </div>
 
-      <p className="pointer-events-none absolute inset-x-0 bottom-5 text-center text-xs text-white/60">
+      <p className="pointer-events-none absolute inset-x-0 text-center text-[13px] text-white/60" style={{ bottom: "calc(env(safe-area-inset-bottom) + 18px)" }}>
         {shown === 0 ? "Tap the card or swipe sideways for the next thought" : "Tap or swipe for another"}
       </p>
 
-      {showLibrary && (
-        <div className="fixed inset-0 z-40 overflow-auto bg-[#12141a] p-5">
-          <div className="mx-auto max-w-[720px]">
-            <div className="flex items-center justify-between text-white">
-              <h2 className="text-2xl font-semibold tracking-[-0.04em]">Thought library</h2>
-              <button type="button" className="rounded-full bg-white/10 px-4 py-2 text-sm" onClick={() => setShowLibrary(false)}>
-                Close
-              </button>
-            </div>
-            {library.items.length === 0 ? (
-              <p className="mt-8 text-sm text-white/70">Saved thoughts will live here.</p>
-            ) : (
-              <div className="mt-6 space-y-3">
-                {library.items.map((item) => {
-                  const c = palette(item.ink || "light");
-                  return (
-                    <article key={item.headline} className="rounded-[18px] p-5" style={{ background: item.gradient, color: c.main }}>
-                      <p className="text-lg font-semibold">{item.headline}</p>
-                      <p className="mt-2 text-sm" style={{ color: c.soft }}>
-                        {item.body}
-                      </p>
-                      <button type="button" className="mt-4 text-sm underline" onClick={() => library.remove(item.headline)}>
-                        Remove
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+      <Sheet
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        title="Thought Library"
+        full
+        action={
+          <button type="button" className="nav-btn strong" onClick={() => setShowLibrary(false)}>
+            Done
+          </button>
+        }
+      >
+        {library.items.length === 0 ? (
+          <p className="px-4 pt-16 text-center text-[15px] text-[var(--muted)]">Saved thoughts will live here.</p>
+        ) : (
+          <div className="space-y-3 pt-1">
+            {library.items.map((item) => {
+              const c = palette(item.ink || "light");
+              return (
+                <article key={item.headline} className="rounded-[20px] p-5" style={{ background: item.gradient, color: c.main }}>
+                  <p className="text-[19px] font-semibold leading-snug tracking-[-0.02em]">{item.headline}</p>
+                  <p className="mt-2 text-[15px] leading-snug" style={{ color: c.soft }}>
+                    {item.body}
+                  </p>
+                  <button type="button" className="mt-4 min-h-9 rounded-full px-4 text-[14px] font-medium" style={{ background: c.chip, color: c.main }} onClick={() => library.remove(item.headline)}>
+                    Remove
+                  </button>
+                </article>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </Sheet>
       <MenuSheet open={menu} onClose={() => setMenu(false)} />
     </div>
   );
