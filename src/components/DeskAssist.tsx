@@ -69,7 +69,7 @@ export function DeskAssist() {
       const next = await runDesk(task, source || draft, notes, nextChat, setStatus);
       setChat([...nextChat, { role: "assistant", text: next.text }]);
       setSources(next.sources);
-      setStatus(`${next.model} · on this device`);
+      setStatus(`${next.model}, on this device`);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Could not run on this device.");
     } finally {
@@ -113,7 +113,7 @@ export function DeskAssist() {
             <div key={`${turn.role}-${index}`} className={`fade-up flex ${turn.role === "user" ? "justify-end" : "justify-start"}`}>
               <p
                 className={`max-w-[85%] whitespace-pre-wrap rounded-[18px] px-3.5 py-2 text-[16px] leading-snug ${
-                  turn.role === "user" ? "bg-[var(--tint)] text-white" : "bg-[var(--surface)]"
+                  turn.role === "user" ? "bg-[var(--ink)] text-[var(--paper)]" : "bg-[var(--surface)]"
                 }`}
               >
                 {turn.text}
