@@ -13,8 +13,8 @@ import type { DailyThought } from "@/lib/types";
 
 function palette(ink: "light" | "dark") {
   return ink === "light"
-    ? { main: "#ffffff", soft: "rgba(255,255,255,0.84)", faint: "rgba(255,255,255,0.64)", chip: "rgba(255,255,255,0.18)", on: "#14161c" }
-    : { main: "#15171d", soft: "rgba(21,23,29,0.80)", faint: "rgba(21,23,29,0.58)", chip: "rgba(21,23,29,0.10)", on: "#ffffff" };
+    ? { main: "#ffffff", soft: "rgba(255,255,255,0.8)", faint: "rgba(255,255,255,0.56)", chip: "rgba(255,255,255,0.16)", on: "#000000" }
+    : { main: "#000000", soft: "rgba(0,0,0,0.76)", faint: "rgba(0,0,0,0.5)", chip: "rgba(0,0,0,0.09)", on: "#ffffff" };
 }
 
 function headlineSize(text: string) {
@@ -98,11 +98,11 @@ export default function ThoughtPage() {
   }
 
   return (
-    <div className="relative h-dvh overflow-hidden bg-black text-white">
+    <div className="relative h-dvh overflow-hidden text-[var(--ink)]">
       {top && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 scale-125 opacity-45 blur-3xl"
+          className="pointer-events-none absolute inset-0 scale-125 opacity-30 blur-3xl"
           style={{ background: top.gradient }}
         />
       )}
@@ -111,7 +111,7 @@ export default function ThoughtPage() {
         <button
           type="button"
           onClick={() => nav.back("/notes")}
-          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-xl"
+          className="glass-pill pointer-events-auto !px-0"
           aria-label="Back to notes"
         >
           <ChevronLeft size={22} />
@@ -119,14 +119,14 @@ export default function ThoughtPage() {
         <button
           type="button"
           onClick={() => setShowLibrary(true)}
-          className="pointer-events-auto min-h-11 rounded-full bg-white/15 px-4 text-[15px] font-medium text-white backdrop-blur-xl"
+          className="glass-pill pointer-events-auto"
         >
-          Library{library.items.length ? ` · ${library.items.length}` : ""}
+          Library{library.items.length ? ` ${library.items.length}` : ""}
         </button>
         <button
           type="button"
           onClick={() => setMenu(true)}
-          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-xl"
+          className="glass-pill pointer-events-auto !px-0"
           aria-label="Menu"
         >
           <EllipsisIcon size={26} />
@@ -178,7 +178,7 @@ export default function ThoughtPage() {
                     Write
                   </button>
                   <span className="ml-auto text-[11px]" style={{ color: c.faint }}>
-                    {card.live ? `Quote · ${card.source || "Public"}` : "Draftr"}
+                    {card.live ? card.source || "Quote" : "Draftr"}
                   </span>
                 </div>
               </SwipeCard>
@@ -187,7 +187,7 @@ export default function ThoughtPage() {
         </div>
       </div>
 
-      <p className="pointer-events-none absolute inset-x-0 text-center text-[13px] text-white/60" style={{ bottom: "calc(env(safe-area-inset-bottom) + 18px)" }}>
+      <p className="pointer-events-none absolute inset-x-0 text-center text-[13px] text-[var(--muted)]" style={{ bottom: "calc(env(safe-area-inset-bottom) + 18px)" }}>
         {shown === 0 ? "Tap the card or swipe sideways for the next thought" : "Tap or swipe for another"}
       </p>
 
