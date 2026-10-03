@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Sheet } from "./Sheet";
+
+const INK = ["#ff3b30", "#ffcc00", "#34c759", "#007aff", "#ffffff", "#1c1c1e"];
 
 export function Markup({ src, onSave, onClose }: { src: string; onSave: (url: string) => void; onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const color = useRef(INK[0]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,54 +32,75 @@ export function Markup({ src, onSave, onClose }: { src: string; onSave: (url: st
     return { x: (e.clientX - box.left) * (canvas.width / box.width), y: (e.clientY - box.top) * (canvas.height / box.height) };
   }
 
+  const stop = () => {
+    drawing.current = false;
+  };
+
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-[var(--ink)]/40 p-4">
-      <div className="card w-full max-w-lg p-4">
-        <p className="text-sm font-medium">Mark photo</p>
-        <canvas
-          ref={canvasRef}
-          width={720}
-          height={480}
-          className="mt-3 w-full rounded-[12px] bg-[var(--soft)]"
-          onPointerDown={(e) => {
-            drawing.current = true;
-            const ctx = canvasRef.current?.getContext("2d");
-            if (!ctx) return;
-            const { x, y } = point(e);
-            ctx.strokeStyle = "#0f766e";
-            ctx.lineWidth = 4;
-            ctx.lineCap = "round";
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-          }}
-          onPointerMove={(e) => {
-            if (!drawing.current) return;
-            const ctx = canvasRef.current?.getContext("2d");
-            if (!ctx) return;
-            const { x, y } = point(e);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-          }}
-          onPointerUp={() => {
-            drawing.current = false;
-          }}
-        />
-        <div className="mt-3 flex gap-2">
-          <button type="button" className="btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
+    <Sheet
+      open
+      onClose={onClose}
+      title="Markup"
+      full
+      leading={
+        <button type="button" className="nav-btn" onClick={onClose}>
+          Cancel
+        </button>
+      }
+      action={
+        <button
+          type="button"
+          className="nav-btn strong"
+          onClick={() => onSave(canvasRef.current?.toDataURL("image/jpeg", 0.86) || src)}
+        >
+          Save
+        </button>
+      }
+    >
+      <canvas
+        ref={canvasRef}
+        width={900}
+        height={600}
+        className="aspect-[3/2] w-full rounded-xl bg-white"
+        style={{ touchAction: "none" }}
+        onPointerDown={(e) => {
+          const ctx = canvasRef.current?.getContext("2d");
+          if (!ctx) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          drawing.current = true;
+          const { x, y } = point(e);
+          ctx.strokeStyle = color.current;
+          ctx.lineWidth = 6;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+        }}
+        onPointerMove={(e) => {
+          if (!drawing.current) return;
+          const ctx = canvasRef.current?.getContext("2d");
+          if (!ctx) return;
+          const { x, y } = point(e);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }}
+        onPointerUp={stop}
+        onPointerCancel={stop}
+      />
+      <div className="mt-4 flex justify-center gap-3">
+        {INK.map((c) => (
           <button
+            key={c}
             type="button"
-            className="btn"
+            aria-label={`Ink ${c}`}
+            className="h-9 w-9 rounded-full border border-[var(--line)] press"
+            style={{ background: c }}
             onClick={() => {
-              const url = canvasRef.current?.toDataURL("image/jpeg", 0.86) || src;
-              onSave(url);
+              color.current = c;
             }}
-          >
-            Save marks
-          </button>
-        </div>
+          />
+        ))}
       </div>
-    </div>
+    </Sheet>
   );
 }
