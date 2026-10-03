@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Spark } from "@/components/Spark";
-import { withViewTransition } from "@/lib/motion";
+import { AppIcon } from "@/components/AppIcon";
 import { useStore } from "@/lib/store";
 
 export default function SplashPage() {
@@ -13,19 +12,18 @@ export default function SplashPage() {
   useEffect(() => {
     if (!ready) return;
     const t = setTimeout(() => {
-      const next = !user ? "/login" : !onboarded ? "/onboarding" : "/notes";
-      withViewTransition(() => router.replace(next));
-    }, 1100);
+      router.replace(!user ? "/login" : !onboarded ? "/onboarding" : "/notes");
+    }, 650);
     return () => clearTimeout(t);
   }, [ready, user, onboarded, router]);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6">
-      <div className="breathe grid h-14 w-14 place-items-center rounded-2xl bg-[var(--ink)] text-[#fafafa] shadow-[var(--shadow)]">
-        <Spark size={22} />
+    <div className="grid min-h-dvh place-items-center px-6">
+      <div className="fade-up flex flex-col items-center">
+        <AppIcon size={88} />
+        <p className="mt-5 text-[28px] font-bold tracking-[-0.03em]">Draftr</p>
+        <p className="mt-1 text-[15px] text-[var(--muted)]">Quiet notes. Clean desk.</p>
       </div>
-      <p className="rise mt-6 text-[32px] font-semibold tracking-[-0.05em]">Draftr</p>
-      <p className="rise-late mt-1 text-sm text-[var(--muted)]">Quiet notes. Clean desk.</p>
     </div>
   );
 }
