@@ -69,7 +69,7 @@ export function SketchPad({ onSave }: { onSave: (url: string) => void }) {
         onPointerCancel={end}
       />
       <div className="mt-3 flex items-center justify-between">
-        <button type="button" onClick={paper} className="btn-plain !text-[var(--red)]">
+        <button type="button" onClick={paper} className="btn-plain !text-[var(--muted)]">
           Clear
         </button>
         <button
