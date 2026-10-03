@@ -10,7 +10,6 @@ import { Segmented } from "@/components/Segmented";
 import { sectionize } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { TAGS } from "@/lib/templates";
-import { gradientFor } from "@/lib/thoughts";
 import type { Tab } from "@/lib/types";
 import { useLiveThought } from "@/lib/useLiveThought";
 import { useNav } from "@/lib/useNav";
@@ -34,8 +33,14 @@ export default function NotesPage() {
   const [menu, setMenu] = useState(false);
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
+  const [intro, setIntro] = useState(true);
   const nav = useNav();
   const { thought: daily, status } = useLiveThought();
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setIntro(false), 1400);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!ready || !("Notification" in window) || Notification.permission !== "granted") return;
@@ -111,16 +116,19 @@ export default function NotesPage() {
         <button
           type="button"
           onClick={() => nav.go("/thought")}
-          className="press relative mt-4 block w-full overflow-hidden rounded-[26px] border border-white/30 p-5 text-left text-white shadow-[var(--shadow-float)]"
-          style={{ background: gradientFor(daily.headline) }}
+          className="press relative mt-5 block w-full overflow-hidden rounded-[var(--r-panel)] bg-[var(--ink)] p-6 text-left text-[var(--paper)] shadow-[var(--shadow-float)]"
         >
-          <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_0%_0%,rgba(255,255,255,0.35),transparent_55%)]" />
-          <p className="relative text-[13px] font-semibold opacity-80">Today’s Thought</p>
-          <p className="relative mt-1.5 text-[24px] font-bold leading-[1.14] tracking-[-0.03em]">{daily.headline}</p>
-          <p className="relative mt-2 line-clamp-2 text-[15px] leading-snug opacity-90">{daily.body}</p>
-          <p className="relative mt-3 flex items-center gap-0.5 text-[13px] font-medium opacity-85">
-            {status === "loading" ? "Finding today’s line…" : "Swipe through more thoughts"}
-            <ChevronRight size={13} />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full opacity-[0.18]"
+            style={{ background: "radial-gradient(closest-side, var(--paper), transparent)" }}
+          />
+          <p className="relative text-[14px] font-medium opacity-60">Today’s thought</p>
+          <p className="relative mt-2 text-[27px] font-bold leading-[1.08] tracking-[-0.04em]">{daily.headline}</p>
+          <p className="relative mt-2.5 line-clamp-2 text-[15px] leading-snug opacity-70">{daily.body}</p>
+          <p className="relative mt-4 flex items-center gap-0.5 text-[14px] font-semibold">
+            {status === "loading" ? "Finding today’s line" : "Swipe through more"}
+            <ChevronRight size={14} />
           </p>
         </button>
 
@@ -161,7 +169,7 @@ export default function NotesPage() {
           </div>
         ) : (
           sections.map((section) => (
-            <section key={section.key}>
+            <section key={section.key} data-intro={intro}>
               <h2 className="group-title">{section.title}</h2>
               <div className="group">
                 {section.notes.map((note) => (
