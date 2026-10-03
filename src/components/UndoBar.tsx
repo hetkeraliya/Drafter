@@ -9,13 +9,13 @@ export function UndoBar() {
   return (
     <div
       className="pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4"
-      style={{ bottom: "calc(66px + env(safe-area-inset-bottom))" }}
+      style={{ bottom: "calc(86px + env(safe-area-inset-bottom))" }}
       role="status"
       aria-live="polite"
     >
       <div
         key={text}
-        className="toast pointer-events-auto flex items-center gap-4 rounded-full border border-[var(--line)] bg-[var(--material)] py-2.5 pl-5 pr-3 text-[15px] shadow-[var(--shadow-float)] backdrop-blur-xl"
+        className="toast pointer-events-auto flex items-center gap-4 rounded-full border border-[var(--glass-border)] bg-[var(--material)] py-2.5 pl-5 pr-3 text-[15px] shadow-[var(--shadow-float)] backdrop-blur-2xl"
       >
         <span>{text}</span>
         {undoLabel && (
