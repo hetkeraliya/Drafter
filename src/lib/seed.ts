@@ -1,25 +1,25 @@
 import type { Note } from "./types";
 
-// Soft gradient "photos" as data URIs: always available, no network, look right in light and dark.
-function art(h1: number, h2: number, h3: number, seed = 0) {
+// Soft grayscale gradient "photos" as data URIs: always available, no network, right in both themes.
+function art(l1: number, l2: number, l3: number, seed = 0) {
   const x = 20 + ((seed * 37) % 60);
   const y = 18 + ((seed * 53) % 56);
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">` +
     `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-    `<stop offset="0" stop-color="hsl(${h1} 80% 62%)"/><stop offset="1" stop-color="hsl(${h2} 78% 48%)"/></linearGradient>` +
-    `<radialGradient id="r" cx="${x}%" cy="${y}%" r="55%"><stop offset="0" stop-color="hsl(${h3} 95% 78%)" stop-opacity=".95"/>` +
-    `<stop offset="1" stop-color="hsl(${h3} 95% 78%)" stop-opacity="0"/></radialGradient></defs>` +
+    `<stop offset="0" stop-color="hsl(0 0% ${l1}%)"/><stop offset="1" stop-color="hsl(0 0% ${l2}%)"/></linearGradient>` +
+    `<radialGradient id="r" cx="${x}%" cy="${y}%" r="55%"><stop offset="0" stop-color="hsl(0 0% ${l3}%)" stop-opacity=".95"/>` +
+    `<stop offset="1" stop-color="hsl(0 0% ${l3}%)" stop-opacity="0"/></radialGradient></defs>` +
     `<rect width="400" height="300" fill="url(#g)"/><rect width="400" height="300" fill="url(#r)"/>` +
-    `<circle cx="${300 - seed * 11}" cy="${70 + seed * 9}" r="46" fill="#fff" fill-opacity=".16"/></svg>`;
+    `<circle cx="${300 - seed * 11}" cy="${70 + seed * 9}" r="46" fill="#fff" fill-opacity=".14"/></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-const SUNRISE = art(24, 340, 48, 1);
-const LAGOON = art(190, 230, 160, 2);
-const MEADOW = art(120, 168, 70, 3);
-const DUSK = art(262, 320, 20, 4);
-const CITRUS = art(44, 14, 58, 5);
+const SUNRISE = art(92, 38, 100, 1);
+const LAGOON = art(24, 70, 96, 2);
+const MEADOW = art(60, 12, 90, 3);
+const DUSK = art(10, 52, 84, 4);
+const CITRUS = art(98, 58, 100, 5);
 
 // Stable ids so "Load sample notes" can add what is missing without ever duplicating or wiping anything.
 export function makeSeedNotes(now = Date.now()): Note[] {
