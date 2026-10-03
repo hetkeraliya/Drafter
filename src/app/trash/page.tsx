@@ -1,49 +1,53 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Phone } from "@/components/Phone";
-import { withViewTransition } from "@/lib/motion";
+import { Screen } from "@/components/Screen";
+import { SwipeRow } from "@/components/SwipeRow";
+import { TrashIcon } from "@/components/Icons";
+import { rowTime } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
 export default function TrashPage() {
   const { ready, trash, restoreNote, purgeNote } = useStore();
-  const router = useRouter();
 
   if (!ready) return null;
 
   return (
-    <Phone>
-      <button type="button" onClick={() => withViewTransition(() => router.push("/notes"))} className="btn-ghost -ml-3">
-        Back
-      </button>
-      <h1 className="mt-6 text-[34px] font-semibold leading-none tracking-[-0.045em]">Trash</h1>
-      <p className="mt-3 text-sm text-[var(--muted)]">Notes wait here until you restore or remove them.</p>
-
+    <Screen title="Trash" large back={{ href: "/notes", label: "Notes" }}>
       {trash.length === 0 ? (
-        <div className="card mt-8 px-6 py-16 text-center">
-          <p className="text-[24px] font-semibold tracking-[-0.04em]">Trash is empty</p>
-          <p className="mt-2 text-sm text-[var(--muted)]">Deleted notes will show up here.</p>
+        <div className="fade-up px-6 pt-24 text-center">
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--fill)] text-[var(--muted)]">
+            <TrashIcon size={28} />
+          </span>
+          <p className="mt-5 text-[22px] font-bold tracking-[-0.025em]">Trash is Empty</p>
+          <p className="mx-auto mt-1.5 max-w-[30ch] text-[15px] text-[var(--muted)]">Deleted notes show up here until you remove them.</p>
         </div>
       ) : (
-        <ul className="mt-6 space-y-2">
-          {trash.map((note, i) => (
-            <li key={note.id} className="card p-4" style={{ ["--i" as string]: i }}>
-              <p className="text-sm font-medium">{note.title || "Untitled"}</p>
-              <p className="mt-1 text-[12px] text-[var(--muted)]">
-                {note.deletedAt ? new Date(note.deletedAt).toLocaleString() : "In trash"}
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button type="button" className="btn min-h-10 px-4 text-sm" onClick={() => restoreNote(note.id)}>
-                  Restore
-                </button>
-                <button type="button" className="btn-ghost text-[var(--danger)]" onClick={() => purgeNote(note.id)}>
-                  Remove
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="group mt-2">
+            {trash.map((note) => (
+              <SwipeRow
+                key={note.id}
+                leading={[{ label: "Restore", color: "var(--tint)", run: () => restoreNote(note.id) }]}
+                trailing={[{ label: "Delete", color: "var(--red)", run: () => purgeNote(note.id) }]}
+              >
+                <div className="cell">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{note.title || "Untitled"}</p>
+                    <p className="text-[15px] text-[var(--muted)]">Deleted {note.deletedAt ? rowTime(note.deletedAt) : ""}</p>
+                  </div>
+                  <button type="button" data-no-swipe className="btn-plain min-h-9 px-2 text-[15px]" onClick={() => restoreNote(note.id)}>
+                    Restore
+                  </button>
+                  <button type="button" data-no-swipe className="btn-plain min-h-9 px-2 text-[15px] !text-[var(--red)]" onClick={() => purgeNote(note.id)}>
+                    Delete
+                  </button>
+                </div>
+              </SwipeRow>
+            ))}
+          </div>
+          <p className="group-foot">Swipe a note, or use the buttons. Deleting here removes it for good.</p>
+        </>
       )}
-    </Phone>
+    </Screen>
   );
 }
