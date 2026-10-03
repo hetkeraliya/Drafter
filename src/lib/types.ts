@@ -8,9 +8,7 @@ export type AttachmentKind = "image" | "audio" | "file" | "sketch";
 
 export type SortMode = "new" | "old" | "type";
 
-export type TypeScale = "sm" | "md" | "lg";
-
-export type PaperTheme = "light" | "dark";
+export type PaperTheme = "system" | "light" | "dark";
 
 export interface ChecklistItem {
   id: string;
@@ -54,7 +52,6 @@ export interface SessionUser {
 
 export interface Prefs {
   theme: PaperTheme;
-  typeScale: TypeScale;
   sort: SortMode;
   streak: number;
   lastWriteDay: string;
