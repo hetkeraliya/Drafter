@@ -1,4 +1,4 @@
-const VERSION = "draftr-pwa-v8";
+const VERSION = "draftr-pwa-v9";
 const SHELL = [
   "/",
   "/login",
@@ -7,7 +7,6 @@ const SHELL = [
   "/thought",
   "/trash",
   "/about",
-  "/motion",
   "/offline",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
