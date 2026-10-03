@@ -27,8 +27,8 @@ export default function TrashPage() {
             {trash.map((note) => (
               <SwipeRow
                 key={note.id}
-                leading={[{ label: "Restore", color: "var(--tint)", run: () => restoreNote(note.id) }]}
-                trailing={[{ label: "Delete", color: "var(--red)", run: () => purgeNote(note.id) }]}
+                leading={[{ label: "Restore", color: "var(--fill-strong)", text: "var(--ink)", run: () => restoreNote(note.id) }]}
+                trailing={[{ label: "Delete", color: "var(--ink)", text: "var(--paper)", run: () => purgeNote(note.id) }]}
               >
                 <div className="cell">
                   <div className="min-w-0 flex-1">
@@ -38,7 +38,7 @@ export default function TrashPage() {
                   <button type="button" data-no-swipe className="btn-plain min-h-9 px-2 text-[15px]" onClick={() => restoreNote(note.id)}>
                     Restore
                   </button>
-                  <button type="button" data-no-swipe className="btn-plain min-h-9 px-2 text-[15px] !text-[var(--red)]" onClick={() => purgeNote(note.id)}>
+                  <button type="button" data-no-swipe className="btn-plain min-h-9 px-2 text-[15px] !text-[var(--muted)]" onClick={() => purgeNote(note.id)}>
                     Delete
                   </button>
                 </div>
