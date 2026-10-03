@@ -1,17 +1,18 @@
 "use client";
 
-import { FormEvent, Suspense, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Dictation } from "@/components/Dictation";
-import { Phone } from "@/components/Phone";
+import { CameraIcon, DocsIcon, PhotoIcon, PenIcon } from "@/components/Icons";
 import { Recorder } from "@/components/Recorder";
+import { Screen } from "@/components/Screen";
 import { Segmented } from "@/components/Segmented";
 import { SketchPad } from "@/components/SketchPad";
 import { fileToAttachment } from "@/lib/files";
-import { withViewTransition } from "@/lib/motion";
 import { newId, useStore } from "@/lib/store";
 import { LIST_TEMPLATES, TAGS } from "@/lib/templates";
 import type { Attachment, Note, NoteType } from "@/lib/types";
+import { useNav } from "@/lib/useNav";
 
 const TYPES: { id: NoteType; label: string }[] = [
   { id: "text", label: "Text" },
@@ -35,7 +36,7 @@ function NewNoteForm() {
   const [hint, setHint] = useState("");
   const [sketchOpen, setSketchOpen] = useState(false);
   const { upsertNote } = useStore();
-  const router = useRouter();
+  const nav = useNav();
   const canSave = useMemo(() => title.trim().length > 0, [title]);
 
   async function addImages(list: FileList | null) {
@@ -73,8 +74,7 @@ function NewNoteForm() {
     setType("todo");
   }
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  function save() {
     if (!canSave) return;
     const now = new Date().toISOString();
     const attachments =
@@ -105,20 +105,27 @@ function NewNoteForm() {
       tags,
     };
     upsertNote(note);
-    withViewTransition(() => router.push(`/notes/${note.id}`));
+    nav.go(`/notes/${note.id}`, "down");
   }
 
   return (
-    <Phone>
-      <button type="button" onClick={() => withViewTransition(() => router.push("/notes"))} className="btn-ghost -ml-3">
-        Back
-      </button>
-      <h1 className="mt-6 text-[34px] font-semibold leading-none tracking-[-0.045em]">New note</h1>
-      <div className="mt-6">
-        <Segmented items={TYPES} value={type} onChange={setType} />
-      </div>
+    <Screen
+      title="New Note"
+      leading={
+        <button type="button" className="nav-btn" onClick={() => nav.go("/notes", "down")}>
+          Cancel
+        </button>
+      }
+      trailing={
+        <button type="button" className="nav-btn strong" disabled={!canSave} onClick={save}>
+          Save
+        </button>
+      }
+    >
+      <Segmented items={TYPES} value={type} onChange={setType} />
+
       {type === "todo" && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="chips mt-3">
           {LIST_TEMPLATES.map((item) => (
             <button key={item.id} type="button" className="chip" onClick={() => applyTemplate(item.id)}>
               {item.label}
@@ -126,88 +133,120 @@ function NewNoteForm() {
           ))}
         </div>
       )}
-      <form onSubmit={onSubmit} className="mt-5 space-y-2.5">
-        <input className="field" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        {type === "text" && (
-          <div key="text" className="swap space-y-2">
-            <textarea className="field" placeholder="Write here" value={body} onChange={(e) => setBody(e.target.value)} />
-            <Dictation
-              onFinal={(text) => setBody((prev) => (prev ? `${prev} ${text}` : text))}
-            />
+
+      <div className="group mt-5">
+        <input
+          className="field !text-[20px] !font-semibold"
+          placeholder="Title"
+          aria-label="Title"
+          enterKeyHint="next"
+          autoFocus={type === "text"}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </div>
+
+      {type === "text" && (
+        <div className="fade-up mt-3">
+          <div className="group">
+            <textarea className="field" placeholder="Start writing" aria-label="Note text" value={body} onChange={(e) => setBody(e.target.value)} />
           </div>
-        )}
-        {type === "todo" && (
-          <textarea
-            key="todo"
-            className="field swap"
-            placeholder="One item per line"
-            value={itemsText}
-            onChange={(e) => setItemsText(e.target.value)}
-          />
-        )}
-        {type === "images" && (
-          <div key="images" className="swap space-y-2.5">
-            <label className="card flex min-h-11 cursor-pointer items-center justify-center px-4 text-sm">
-              Choose photos
+          <div className="mt-3">
+            <Dictation onFinal={(text) => setBody((prev) => (prev ? `${prev} ${text}` : text))} />
+          </div>
+        </div>
+      )}
+
+      {type === "todo" && (
+        <div className="fade-up mt-3">
+          <div className="group">
+            <textarea className="field" placeholder="One item per line" aria-label="List items" value={itemsText} onChange={(e) => setItemsText(e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {type === "images" && (
+        <div className="fade-up mt-3">
+          <div className="group">
+            <label className="cell tappable">
+              <span className="cell-icon" style={{ background: "var(--tint)" }}>
+                <PhotoIcon size={18} />
+              </span>
+              <span className="flex-1">Choose Photos</span>
               <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addImages(e.target.files)} />
             </label>
-            <label className="card flex min-h-11 cursor-pointer items-center justify-center px-4 text-sm">
-              Take photo
+            <label className="cell tappable">
+              <span className="cell-icon" style={{ background: "var(--green)" }}>
+                <CameraIcon size={18} />
+              </span>
+              <span className="flex-1">Take Photo</span>
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => addImages(e.target.files)} />
             </label>
-            <button type="button" className="card flex min-h-11 w-full items-center justify-center px-4 text-sm" onClick={() => setSketchOpen((v) => !v)}>
-              {sketchOpen ? "Hide sketch pad" : "Draw a sketch"}
+            <button type="button" className="cell" onClick={() => setSketchOpen((v) => !v)}>
+              <span className="cell-icon" style={{ background: "var(--orange)" }}>
+                <PenIcon size={18} />
+              </span>
+              <span className="flex-1">{sketchOpen ? "Hide Sketch Pad" : "Draw a Sketch"}</span>
             </button>
-            {sketchOpen && (
+          </div>
+          {sketchOpen && (
+            <div className="group mt-3 p-3">
               <SketchPad
                 onSave={(url) => {
                   setImages((prev) => [...prev, { id: newId(), kind: "sketch" as const, url, name: "sketch.png" }].slice(0, 8));
                   setSketchOpen(false);
                 }}
               />
-            )}
-            {images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {images.map((img) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={img.id} src={img.url} alt="" className="media-in h-24 w-full rounded-[10px] object-cover" />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {type === "audio" && (
-          <div key="audio" className="swap">
-            <Recorder value={audio} onChange={setAudio} />
-          </div>
-        )}
-        {type === "file" && (
-          <div key="file" className="swap space-y-2.5">
-            <label className="card flex min-h-11 cursor-pointer items-center justify-center px-4 text-sm">
-              Upload PDF or file
+            </div>
+          )}
+          {images.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {images.map((img) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={img.id} src={img.url} alt="" className="media-in aspect-square w-full rounded-xl object-cover" />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {type === "audio" && (
+        <div className="fade-up mt-3">
+          <Recorder value={audio} onChange={setAudio} />
+        </div>
+      )}
+
+      {type === "file" && (
+        <div className="fade-up mt-3">
+          <div className="group">
+            <label className="cell tappable">
+              <span className="cell-icon" style={{ background: "var(--orange)" }}>
+                <DocsIcon size={18} />
+              </span>
+              <span className="flex-1">{fileAtt ? fileAtt.name : "Choose PDF or File"}</span>
               <input type="file" accept="application/pdf,.pdf,.doc,.docx,.txt" className="hidden" onChange={(e) => addPdf(e.target.files)} />
             </label>
-            {fileAtt && <p className="text-sm text-[var(--muted)]">{fileAtt.name}</p>}
           </div>
-        )}
-        <div className="flex flex-wrap gap-2 pt-1">
-          {TAGS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setTags((prev) => (prev.includes(item) ? prev.filter((t) => t !== item) : [...prev, item]))}
-              className={`chip ${tags.includes(item) ? "bg-[var(--ink)] text-[#fafafa]" : ""}`}
-            >
-              {item}
-            </button>
-          ))}
         </div>
-        {hint && <p className="text-sm text-[var(--danger)]">{hint}</p>}
-        <button type="submit" disabled={!canSave} className="btn w-full">
-          Save note
-        </button>
-      </form>
-    </Phone>
+      )}
+
+      <p className="group-label">Tags</p>
+      <div className="chips">
+        {TAGS.map((item) => (
+          <button
+            key={item}
+            type="button"
+            aria-pressed={tags.includes(item)}
+            className="chip"
+            onClick={() => setTags((prev) => (prev.includes(item) ? prev.filter((t) => t !== item) : [...prev, item]))}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+
+      {hint && <p className="group-foot !text-[var(--red)]">{hint}</p>}
+    </Screen>
   );
 }
 
