@@ -55,7 +55,7 @@ export function Recorder({
 
   return (
     <div className="group px-5 py-6 text-center">
-      <div className={`flex justify-center ${recording ? "text-[var(--red)]" : "text-[var(--faint)]"}`}>
+      <div className={`flex justify-center ${recording ? "text-[var(--ink)]" : "text-[var(--faint)]"}`}>
         <Waveform live={recording} bars={26} />
       </div>
       <p className="mt-3 text-[15px] text-[var(--muted)]">{recording ? "Recording…" : value ? "Voice memo saved" : "Tap to record"}</p>
@@ -66,12 +66,12 @@ export function Recorder({
         className={`press mx-auto mt-4 grid h-[68px] w-[68px] place-items-center rounded-full border-[3px] border-[var(--faint)] ${recording ? "rec-live" : ""}`}
       >
         <span
-          className="block bg-[var(--red)] transition-all duration-300"
+          className="block bg-[var(--ink)] transition-all duration-300"
           style={{ width: recording ? 24 : 54, height: recording ? 24 : 54, borderRadius: recording ? 7 : 27 }}
         />
       </button>
       {value?.url && <audio controls src={value.url} className="mt-5 w-full" />}
-      {error && <p className="mt-3 text-[15px] text-[var(--red)]">{error}</p>}
+      {error && <p className="mt-3 text-[15px] text-[var(--muted)]">{error}</p>}
     </div>
   );
 }
