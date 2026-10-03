@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Sheet } from "./Sheet";
 
-const INK = ["#ff3b30", "#ffcc00", "#34c759", "#007aff", "#ffffff", "#1c1c1e"];
+const INK = ["#000000", "#ffffff", "#8a8a8a"];
 
 export function Markup({ src, onSave, onClose }: { src: string; onSave: (url: string) => void; onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
