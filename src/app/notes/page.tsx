@@ -74,6 +74,7 @@ export default function NotesPage() {
   if (!ready) return null;
 
   const searching = query.trim() !== "" || tag !== "" || tab !== "all";
+  let rowIndex = 0;
 
   return (
     <>
@@ -110,13 +111,14 @@ export default function NotesPage() {
         <button
           type="button"
           onClick={() => nav.go("/thought")}
-          className="press relative mt-4 block w-full overflow-hidden rounded-[20px] p-5 text-left text-white"
+          className="press relative mt-4 block w-full overflow-hidden rounded-[26px] border border-white/30 p-5 text-left text-white shadow-[var(--shadow-float)]"
           style={{ background: gradientFor(daily.headline) }}
         >
-          <p className="text-[13px] font-semibold opacity-75">Today’s Thought</p>
-          <p className="mt-1.5 text-[24px] font-bold leading-[1.14] tracking-[-0.03em]">{daily.headline}</p>
-          <p className="mt-2 line-clamp-2 text-[15px] leading-snug opacity-85">{daily.body}</p>
-          <p className="mt-3 flex items-center gap-0.5 text-[13px] font-medium opacity-80">
+          <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_0%_0%,rgba(255,255,255,0.35),transparent_55%)]" />
+          <p className="relative text-[13px] font-semibold opacity-80">Today’s Thought</p>
+          <p className="relative mt-1.5 text-[24px] font-bold leading-[1.14] tracking-[-0.03em]">{daily.headline}</p>
+          <p className="relative mt-2 line-clamp-2 text-[15px] leading-snug opacity-90">{daily.body}</p>
+          <p className="relative mt-3 flex items-center gap-0.5 text-[13px] font-medium opacity-85">
             {status === "loading" ? "Finding today’s line…" : "Swipe through more thoughts"}
             <ChevronRight size={13} />
           </p>
@@ -165,6 +167,7 @@ export default function NotesPage() {
                 {section.notes.map((note) => (
                   <NoteRow
                     key={note.id}
+                    index={rowIndex++}
                     note={note}
                     onToggle={(itemId) => toggleItem(note.id, itemId)}
                     onPin={() => pinNote(note.id)}
