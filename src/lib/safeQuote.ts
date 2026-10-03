@@ -37,7 +37,7 @@ export function shapeQuote(quote: string, author: string, source: string, day: s
   return {
     day,
     headline: short,
-    body: who ? `${text} — ${who}` : text,
+    body: who ? `${text} (${who})` : text,
     prompt: "What does this spark for you today?",
     author: who,
     source,
@@ -52,7 +52,7 @@ export function shapeCard(quote: string, author: string, source: string, day: st
   return {
     day,
     headline: text,
-    body: `— ${who}`,
+    body: who,
     prompt: randomPrompt(),
     author: who,
     source,
