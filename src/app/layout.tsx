@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
 import "./globals.css";
 import { DeskAssist } from "@/components/DeskAssist";
+import { NavBridge } from "@/components/NavBridge";
 import { PwaRegister } from "@/components/PwaRegister";
 import { UndoBar } from "@/components/UndoBar";
 import { StoreProvider } from "@/lib/store";
-
-const outfit = Outfit({ variable: "--font-outfit", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   applicationName: "Draftr",
@@ -31,19 +29,31 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F4F5F7",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
+  colorScheme: "light dark",
   viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
 };
+
+// Runs before first paint so a saved Light/Dark choice never flashes the wrong theme.
+const THEME_BOOT = `try{var p=JSON.parse(localStorage.getItem("draftr.prefs.v8")||"{}");if(p.theme==="light"||p.theme==="dark"){document.documentElement.dataset.theme=p.theme;var c=p.theme==="dark"?"#000000":"#f2f2f7";document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",c)})}}catch(e){}`;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${outfit.variable} antialiased`}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
+      <body className="antialiased">
         <StoreProvider>
           <PwaRegister />
+          <NavBridge />
           <main className="min-h-dvh">{children}</main>
           <UndoBar />
           <DeskAssist />
