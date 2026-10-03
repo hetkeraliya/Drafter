@@ -38,7 +38,7 @@ export function Dictation({
 
   return (
     <div>
-      <button type="button" onClick={toggle} className={`btn btn-sm ${on ? "rec-live !bg-[var(--red)] !text-white" : "btn-quiet"}`}>
+      <button type="button" onClick={toggle} className={`btn btn-sm ${on ? "rec-live" : "btn-quiet"}`}>
         <MicIcon size={16} /> {on ? "Stop" : label}
       </button>
       {live && <p className="mt-2 text-[15px] text-[var(--muted)]">{live}</p>}
