@@ -157,7 +157,7 @@ export default function NoteDetailPage() {
       {(current.pinned || current.tags?.length) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {current.pinned && (
-            <span className="tag !text-[var(--orange)]">
+            <span className="tag !text-[var(--ink)]">
               <PinFilledIcon size={10} />
               <span className="ml-1">Pinned</span>
             </span>
@@ -175,7 +175,7 @@ export default function NoteDetailPage() {
           <div className="group mt-5">
             {parents.map((item) => (
               <div key={item.id}>
-                <SwipeRow trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--red)", run: () => removeItem(current.id, item.id) }]}>
+                <SwipeRow trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--ink)", text: "var(--paper)", run: () => removeItem(current.id, item.id) }]}>
                   <div className="cell gap-3">
                     <Check checked={item.checked} onToggle={() => toggleItem(current.id, item.id)} label={item.label} />
                     <span className="strike min-w-0 flex-1" data-on={item.checked}>
@@ -206,7 +206,7 @@ export default function NoteDetailPage() {
                 {current.items
                   .filter((child) => child.parentId === item.id)
                   .map((child) => (
-                    <SwipeRow key={child.id} trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--red)", run: () => removeItem(current.id, child.id) }]}>
+                    <SwipeRow key={child.id} trailing={[{ label: "Delete", icon: <TrashIcon size={20} />, color: "var(--ink)", text: "var(--paper)", run: () => removeItem(current.id, child.id) }]}>
                       <div className="cell gap-3 !pl-12">
                         <Check small checked={child.checked} onToggle={() => toggleItem(current.id, child.id)} label={child.label} />
                         <span className="strike min-w-0 flex-1 text-[16px]" data-on={child.checked}>
