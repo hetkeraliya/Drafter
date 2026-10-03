@@ -1,47 +1,52 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Phone } from "@/components/Phone";
-import { withViewTransition } from "@/lib/motion";
+import type { ReactNode } from "react";
+import { ComposeIcon, ListIcon, PhotoIcon, SparkleIcon } from "@/components/Icons";
+import { Screen } from "@/components/Screen";
 import { useStore } from "@/lib/store";
+import { useNav } from "@/lib/useNav";
 
-const STEPS = [
-  { label: "Write", copy: "Capture a thought in a clean text note." },
-  { label: "List", copy: "Check off tasks without extra chrome." },
-  { label: "Keep", copy: "Store photos, voice memos, and files together." },
+const STEPS: { label: string; copy: string; color: string; icon: ReactNode }[] = [
+  { label: "Write", copy: "Capture a thought in a clean text note.", color: "var(--tint)", icon: <ComposeIcon size={22} /> },
+  { label: "List", copy: "Check things off, add smaller steps and due dates.", color: "var(--green)", icon: <ListIcon size={22} /> },
+  { label: "Keep", copy: "Store photos, voice memos and files together.", color: "var(--orange)", icon: <PhotoIcon size={22} /> },
+  { label: "Think", copy: "A new thought every day, and a deck to swipe through.", color: "var(--purple)", icon: <SparkleIcon size={22} /> },
 ];
 
 export default function OnboardingPage() {
   const { completeOnboarding } = useStore();
-  const router = useRouter();
+  const nav = useNav();
 
   function next() {
     completeOnboarding();
-    withViewTransition(() => router.push("/notes"));
+    nav.go("/notes");
   }
 
   return (
-    <Phone>
-      <p className="meta">Start</p>
-      <h1 className="mt-5 max-w-[13ch] text-[42px] font-semibold leading-[1.02] tracking-[-0.055em]">
-        One desk for every draft.
+    <Screen bare>
+      <h1 className="pt-10 text-center text-[34px] font-bold leading-[1.1] tracking-[-0.03em]">
+        Welcome to
+        <br />
+        Draftr
       </h1>
-      <ul className="mt-10 space-y-3">
-        {STEPS.map((step, i) => (
-          <li key={step.label} className="card tile flex items-start gap-4 p-5" style={{ ["--i" as string]: i }}>
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--soft)] text-xs font-semibold">
-              0{i + 1}
+      <ul className="mx-auto mt-12 max-w-[420px] space-y-7">
+        {STEPS.map((step) => (
+          <li key={step.label} className="flex items-start gap-4">
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-xl text-white" style={{ background: step.color }}>
+              {step.icon}
             </span>
             <div>
-              <p className="text-sm font-medium">{step.label}</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">{step.copy}</p>
+              <p className="text-[17px] font-semibold">{step.label}</p>
+              <p className="mt-0.5 text-[15px] leading-snug text-[var(--muted)]">{step.copy}</p>
             </div>
           </li>
         ))}
       </ul>
-      <button type="button" onClick={next} className="btn mt-8 w-full sm:w-auto">
-        Open notes
-      </button>
-    </Phone>
+      <div className="mx-auto mt-14 max-w-[420px]">
+        <button type="button" onClick={next} className="btn w-full">
+          Continue
+        </button>
+      </div>
+    </Screen>
   );
 }
