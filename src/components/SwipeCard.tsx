@@ -103,7 +103,7 @@ export function SwipeCard({ depth, gradient, active, onGone, register, color, ch
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden rounded-[28px] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.55)] select-none"
+      className="absolute inset-0 overflow-hidden rounded-[32px] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.6)] select-none"
       style={style}
       onPointerDown={down}
       onPointerMove={move}
