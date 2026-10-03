@@ -169,21 +169,21 @@ function NewNoteForm() {
         <div className="fade-up mt-3">
           <div className="group">
             <label className="cell tappable">
-              <span className="cell-icon" style={{ background: "var(--tint)" }}>
+              <span className="cell-icon" style={{ background: "var(--g-brand)" }}>
                 <PhotoIcon size={18} />
               </span>
               <span className="flex-1">Choose Photos</span>
               <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addImages(e.target.files)} />
             </label>
             <label className="cell tappable">
-              <span className="cell-icon" style={{ background: "var(--green)" }}>
+              <span className="cell-icon" style={{ background: "var(--g-green)" }}>
                 <CameraIcon size={18} />
               </span>
               <span className="flex-1">Take Photo</span>
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => addImages(e.target.files)} />
             </label>
             <button type="button" className="cell" onClick={() => setSketchOpen((v) => !v)}>
-              <span className="cell-icon" style={{ background: "var(--orange)" }}>
+              <span className="cell-icon" style={{ background: "var(--g-orange)" }}>
                 <PenIcon size={18} />
               </span>
               <span className="flex-1">{sketchOpen ? "Hide Sketch Pad" : "Draw a Sketch"}</span>
@@ -220,7 +220,7 @@ function NewNoteForm() {
         <div className="fade-up mt-3">
           <div className="group">
             <label className="cell tappable">
-              <span className="cell-icon" style={{ background: "var(--orange)" }}>
+              <span className="cell-icon" style={{ background: "var(--g-orange)" }}>
                 <DocsIcon size={18} />
               </span>
               <span className="flex-1">{fileAtt ? fileAtt.name : "Choose PDF or File"}</span>
