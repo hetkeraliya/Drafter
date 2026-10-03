@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { onDesk } from "@/lib/deskBus";
 import { modelSize, runDesk, searchNotes, setModelSize, type ChatTurn, type DeskTask, type ModelSize } from "@/lib/localAi";
 import { useStore } from "@/lib/store";
+import { Segmented } from "./Segmented";
+import { Sheet } from "./Sheet";
 
 const ACTIONS: { id: DeskTask; label: string }[] = [
   { id: "ask", label: "Ask notes" },
@@ -15,6 +17,11 @@ const ACTIONS: { id: DeskTask; label: string }[] = [
   { id: "title", label: "Title" },
   { id: "shorten", label: "Shorten" },
   { id: "continue", label: "Continue" },
+];
+
+const MODELS: { id: ModelSize; label: string }[] = [
+  { id: "fast", label: "Fast" },
+  { id: "smarter", label: "Smarter" },
 ];
 
 export function DeskAssist() {
@@ -32,14 +39,14 @@ export function DeskAssist() {
 
   useEffect(() => {
     const off = onDesk((request) => {
-    setDraft(request.text || "");
-    setText(request.text || "");
-    setChat([]);
-    setSources([]);
-    setSize(modelSize());
-    setApply(() => request.onApply || null);
-    setStatus("Runs on this device. Notes stay here.");
-    setOpen(true);
+      setDraft(request.text || "");
+      setText(request.text || "");
+      setChat([]);
+      setSources([]);
+      setSize(modelSize());
+      setApply(() => request.onApply || null);
+      setStatus("Runs on this device. Notes stay here.");
+      setOpen(true);
     });
     return () => {
       off();
@@ -70,60 +77,56 @@ export function DeskAssist() {
     }
   }
 
-  if (!open) return null;
   const last = [...chat].reverse().find((turn) => turn.role === "assistant");
-  const matches = searchNotes(draft || text, notes, 3);
+  const matches = open ? searchNotes(draft || text, notes, 3) : [];
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-end bg-[var(--ink)]/30 p-3 sm:place-items-center">
-      <div className="card flex max-h-[88dvh] w-full max-w-xl flex-col p-4" role="dialog" aria-label="Desk assistant">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="meta">On this device</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em]">Desk assistant</h2>
-          </div>
-          <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>
-            Close
-          </button>
-        </div>
+    <Sheet
+      open={open}
+      onClose={() => setOpen(false)}
+      title="Desk"
+      full
+      action={
+        <button type="button" className="nav-btn strong" onClick={() => setOpen(false)}>
+          Done
+        </button>
+      }
+    >
+      <div className="flex h-full flex-col">
+        <Segmented
+          items={MODELS}
+          value={size}
+          onChange={(option) => {
+            setSize(option);
+            setModelSize(option);
+            setStatus(option === "smarter" ? "Smarter model will download on the next ask." : "Fast model selected.");
+          }}
+        />
 
-        <div className="mt-3 flex gap-2">
-          {(["fast", "smarter"] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`chip ${size === option ? "bg-[var(--ink)] text-[#fafafa]" : ""}`}
-              onClick={() => {
-                setSize(option);
-                setModelSize(option);
-                setStatus(option === "smarter" ? "Smarter model will download on the next ask." : "Fast model selected.");
-              }}
-            >
-              {option === "fast" ? "Fast model" : "Smarter model"}
-            </button>
-          ))}
-        </div>
-
-        <div ref={scroller} className="mt-3 min-h-32 flex-1 space-y-2 overflow-auto">
+        <div ref={scroller} className="selectable mt-4 min-h-32 flex-1 space-y-2.5 overflow-y-auto">
           {chat.length === 0 && (
-            <p className="text-sm leading-6 text-[var(--muted)]">
-              Ask a question, or use a tool. It can search saved notes on this device, outline, explain, and make a short quiz.
+            <p className="px-1 text-[15px] leading-6 text-[var(--muted)]">
+              Ask a question, or pick a tool below. Desk can search your notes, outline, explain and make a short quiz, all on this device.
             </p>
           )}
           {chat.map((turn, index) => (
-            <p key={`${turn.role}-${index}`} className={`rounded-[12px] px-3 py-2 text-sm leading-6 ${turn.role === "user" ? "bg-[var(--soft)]" : "border border-[var(--line)]"}`}>
-              {turn.text}
-            </p>
+            <div key={`${turn.role}-${index}`} className={`fade-up flex ${turn.role === "user" ? "justify-end" : "justify-start"}`}>
+              <p
+                className={`max-w-[85%] whitespace-pre-wrap rounded-[18px] px-3.5 py-2 text-[16px] leading-snug ${
+                  turn.role === "user" ? "bg-[var(--tint)] text-white" : "bg-[var(--surface)]"
+                }`}
+              >
+                {turn.text}
+              </p>
+            </div>
           ))}
         </div>
 
-        {matches.length > 0 && (
-          <p className="mt-2 text-[11px] text-[var(--muted)]">Nearby notes: {matches.map((note) => note.title).join(" · ")}</p>
-        )}
-        {sources.length > 0 && <p className="mt-1 text-[11px] text-[var(--muted)]">Used: {sources.join(" · ")}</p>}
-        <p className="mt-2 text-[12px] text-[var(--muted)]">{status}</p>
+        {matches.length > 0 && <p className="mt-2 text-[13px] text-[var(--muted)]">Nearby notes: {matches.map((note) => note.title).join(", ")}</p>}
+        {sources.length > 0 && <p className="mt-1 text-[13px] text-[var(--muted)]">Used: {sources.join(", ")}</p>}
+        <p className="mt-1 text-[13px] text-[var(--muted)]">{busy ? "Thinking…" : status}</p>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="chips mt-3">
           {ACTIONS.map((action) => (
             <button key={action.id} type="button" className="chip" disabled={busy} onClick={() => ask(action.id)}>
               {action.label}
@@ -131,31 +134,32 @@ export function DeskAssist() {
           ))}
         </div>
 
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void ask("ask");
-          }}
-        >
-          <input className="field" placeholder="Ask your notebook" value={text} onChange={(e) => setText(e.target.value)} />
-          <button type="submit" className="btn" disabled={busy}>
-            Ask
-          </button>
-        </form>
         {last && apply && (
           <button
             type="button"
-            className="btn mt-3"
+            className="btn btn-quiet mt-3 w-full"
             onClick={() => {
               apply(last.text);
               setOpen(false);
             }}
           >
-            Use in note
+            Use in Note
           </button>
         )}
+
+        <form
+          className="mt-3 flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void ask("ask");
+          }}
+        >
+          <input className="field !rounded-full" placeholder="Ask your notebook" enterKeyHint="send" value={text} onChange={(e) => setText(e.target.value)} />
+          <button type="submit" className="btn btn-sm !min-h-11 flex-none" disabled={busy}>
+            Ask
+          </button>
+        </form>
       </div>
-    </div>
+    </Sheet>
   );
 }
