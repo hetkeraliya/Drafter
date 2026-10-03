@@ -11,20 +11,22 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { mergeNotes, pullNotes, pushNotes, removeNotes } from "./cloud";
-import { SEED_NOTES } from "./seed";
+import { makeSeedNotes } from "./seed";
 import { getSupabase } from "./supabase";
+import { applyTheme } from "./theme";
 import { todayKey } from "./thoughts";
-import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode, TypeScale } from "./types";
+import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode } from "./types";
 
 const NOTES_KEY = "draftr.notes.v7";
 const NOTES_OLD = "draftr.notes.v6";
 const USER_KEY = "draftr.user.v6";
 const ONBOARD_KEY = "draftr.onboarded.v6";
-const PREFS_KEY = "draftr.prefs.v7";
+const PREFS_KEY = "draftr.prefs.v8";
+const PREFS_OLD = "draftr.prefs.v7";
+const SEEDED_KEY = "draftr.seeded.v1";
 
 const DEFAULT_PREFS: Prefs = {
-  theme: "light",
-  typeScale: "md",
+  theme: "system",
   sort: "new",
   streak: 0,
   lastWriteDay: "",
@@ -55,10 +57,12 @@ interface Store {
   cloud: boolean;
   prefs: Prefs;
   undoLabel: string;
+  notice: string;
   signInDemo: (name?: string, email?: string) => void;
   signOut: () => void;
   completeOnboarding: () => void;
   upsertNote: (note: Note) => void;
+  patchNote: (id: string, patch: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   restoreNote: (id: string) => void;
   purgeNote: (id: string) => void;
@@ -71,9 +75,8 @@ interface Store {
   pinNote: (id: string) => void;
   tagNote: (id: string, tag: string) => void;
   remindNote: (id: string, when: string | null) => void;
-  resetDemo: () => void;
+  loadSamples: () => void;
   setTheme: (theme: PaperTheme) => void;
-  setTypeScale: (scale: TypeScale) => void;
   setSort: (sort: SortMode) => void;
   bumpStreak: () => void;
   setThoughtCursor: (n: number) => void;
@@ -89,6 +92,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [undo, setUndo] = useState<Note | null>(null);
   const [undoLabel, setUndoLabel] = useState("");
+  const [notice, setNotice] = useState("");
+  const notesRef = useRef<Note[]>([]);
+  const undoTimer = useRef<number | undefined>(undefined);
+  const noticeTimer = useRef<number | undefined>(undefined);
   const supa = useMemo(() => getSupabase(), []);
   const cloud = Boolean(supa && user && !user.demo);
   const pulledFor = useRef("");
@@ -100,10 +107,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const rawNotes = localStorage.getItem(NOTES_KEY) || localStorage.getItem(NOTES_OLD);
       const rawOn = localStorage.getItem(ONBOARD_KEY);
       const rawPrefs = localStorage.getItem(PREFS_KEY);
+      const oldPrefs = rawPrefs ? null : localStorage.getItem(PREFS_OLD);
       setUser(rawUser ? JSON.parse(rawUser) : null);
-      setNotes(rawNotes ? (JSON.parse(rawNotes) as Note[]).map(hydrate) : []);
+      if (rawNotes) {
+        setNotes((JSON.parse(rawNotes) as Note[]).map(hydrate));
+      } else if (localStorage.getItem(SEEDED_KEY) !== "1") {
+        // Brand-new install: start with sample notes so the app never opens empty.
+        setNotes(makeSeedNotes().map(hydrate));
+      }
+      localStorage.setItem(SEEDED_KEY, "1");
       setOnboarded(rawOn === "1");
-      if (rawPrefs) setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(rawPrefs) });
+      if (rawPrefs) {
+        setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(rawPrefs) });
+      } else if (oldPrefs) {
+        // Carry over what still exists; theme restarts on "system" so it follows the phone.
+        const old = JSON.parse(oldPrefs) as Partial<Prefs>;
+        setPrefs({
+          ...DEFAULT_PREFS,
+          sort: old.sort || DEFAULT_PREFS.sort,
+          streak: old.streak || 0,
+          lastWriteDay: old.lastWriteDay || "",
+          thoughtCursor: old.thoughtCursor || 0,
+        });
+      }
     } catch {
       setNotes([]);
     }
@@ -111,16 +137,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    notesRef.current = notes;
     if (!ready) return;
-    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    try {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    } catch {
+      console.warn("Draftr: could not save notes locally (storage full)");
+    }
   }, [notes, ready]);
 
   useEffect(() => {
     if (!ready) return;
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-    const root = document.documentElement;
-    root.dataset.theme = prefs.theme;
-    root.dataset.size = prefs.typeScale;
+    applyTheme(prefs.theme);
+    if (prefs.theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => applyTheme("system");
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, [prefs, ready]);
 
   // Real Supabase session -> app user. Demo/local users are never kicked out by this.
@@ -255,20 +289,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Partial edit applied to the latest copy, so a late debounced save can never overwrite newer changes.
+  const patchNote = useCallback((id: string, patch: Partial<Note>) => {
+    setNotes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, ...patch, updatedAt: new Date().toISOString() } : n)),
+    );
+  }, []);
+
+  const flash = useCallback((message: string) => {
+    window.clearTimeout(noticeTimer.current);
+    setNotice(message);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 2600);
+  }, []);
+
   const deleteNote = useCallback((id: string) => {
-    setNotes((prev) => {
-      const found = prev.find((n) => n.id === id);
-      if (found) {
-        setUndo(found);
-        setUndoLabel("Note moved to trash");
-        window.setTimeout(() => {
-          setUndo((cur) => (cur?.id === found.id ? null : cur));
-          setUndoLabel("");
-        }, 6000);
-      }
-      const stamp = new Date().toISOString();
-      return prev.map((n) => (n.id === id ? { ...n, deletedAt: stamp, updatedAt: stamp } : n));
-    });
+    const found = notesRef.current.find((n) => n.id === id);
+    if (found) {
+      window.clearTimeout(undoTimer.current);
+      setUndo(found);
+      setUndoLabel("Note moved to trash");
+      undoTimer.current = window.setTimeout(() => {
+        setUndo(null);
+        setUndoLabel("");
+      }, 6000);
+    }
+    const stamp = new Date().toISOString();
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: stamp, updatedAt: stamp } : n)));
   }, []);
 
   const restoreNote = useCallback((id: string) => {
@@ -283,6 +329,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!undo) return;
     const id = undo.id;
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null, updatedAt: new Date().toISOString() } : n)));
+    window.clearTimeout(undoTimer.current);
     setUndo(null);
     setUndoLabel("");
   }, [undo]);
@@ -336,9 +383,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const resetDemo = useCallback(() => {
-    setNotes(SEED_NOTES.map(hydrate));
-  }, []);
+  // Adds any sample note that is missing (or brings a trashed one back). Never replaces your own notes.
+  const loadSamples = useCallback(() => {
+    const seeds = makeSeedNotes();
+    const current = new Map(notesRef.current.map((n) => [n.id, n]));
+    const missing = seeds.filter((s) => !current.has(s.id));
+    const trashed = seeds.filter((s) => current.get(s.id)?.deletedAt);
+    const added = missing.length + trashed.length;
+    if (added === 0) {
+      flash("Sample notes are already here");
+      return;
+    }
+    const stamp = new Date().toISOString();
+    setNotes((prev) => {
+      const trashedIds = new Set(trashed.map((s) => s.id));
+      const have = new Set(prev.map((n) => n.id));
+      const revived = prev.map((n) => (trashedIds.has(n.id) ? { ...n, deletedAt: null, updatedAt: stamp } : n));
+      return [...revived, ...missing.filter((s) => !have.has(s.id)).map(hydrate)];
+    });
+    flash(added === 1 ? "Added 1 sample note" : `Added ${added} sample notes`);
+  }, [flash]);
 
   const bumpStreak = useCallback(() => {
     const day = todayKey();
@@ -351,8 +415,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const live = notes.filter((n) => !n.deletedAt);
-  const trash = notes.filter((n) => Boolean(n.deletedAt));
+  const live = useMemo(() => notes.filter((n) => !n.deletedAt), [notes]);
+  const trash = useMemo(() => notes.filter((n) => Boolean(n.deletedAt)), [notes]);
 
   const value = useMemo(
     () => ({
@@ -364,10 +428,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       cloud,
       prefs,
       undoLabel,
+      notice,
       signInDemo,
       signOut,
       completeOnboarding,
       upsertNote,
+      patchNote,
       deleteNote,
       restoreNote,
       purgeNote,
@@ -380,9 +446,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       pinNote,
       tagNote,
       remindNote,
-      resetDemo,
+      loadSamples,
       setTheme: (theme: PaperTheme) => patchPrefs({ theme }),
-      setTypeScale: (typeScale: TypeScale) => patchPrefs({ typeScale }),
       setSort: (sort: SortMode) => patchPrefs({ sort }),
       bumpStreak,
       setThoughtCursor: (thoughtCursor: number) => patchPrefs({ thoughtCursor }),
@@ -396,10 +461,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       cloud,
       prefs,
       undoLabel,
+      notice,
       signInDemo,
       signOut,
       completeOnboarding,
       upsertNote,
+      patchNote,
       deleteNote,
       restoreNote,
       purgeNote,
@@ -412,7 +479,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       pinNote,
       tagNote,
       remindNote,
-      resetDemo,
+      loadSamples,
       patchPrefs,
       bumpStreak,
     ],
