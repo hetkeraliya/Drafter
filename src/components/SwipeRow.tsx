@@ -7,6 +7,7 @@ export interface SwipeAction {
   label: string;
   icon?: ReactNode;
   color: string;
+  text?: string;
   run: () => void;
 }
 
@@ -115,7 +116,7 @@ export function SwipeRow({
       {leading.length > 0 && (
         <div className="row-actions" style={{ left: 0, width: x > 0 ? x : 0 }}>
           {leading.map((a) => (
-            <button key={a.label} type="button" style={{ background: a.color }} onClick={() => act(a)} tabIndex={x > 0 ? 0 : -1}>
+            <button key={a.label} type="button" style={{ background: a.color, color: a.text || "#fff" }} onClick={() => act(a)} tabIndex={x > 0 ? 0 : -1}>
               {a.icon}
               <span>{a.label}</span>
             </button>
@@ -125,7 +126,7 @@ export function SwipeRow({
       {trailing.length > 0 && (
         <div className="row-actions" style={{ right: 0, width: x < 0 ? -x : 0 }}>
           {trailing.map((a) => (
-            <button key={a.label} type="button" style={{ background: a.color }} onClick={() => act(a)} tabIndex={x < 0 ? 0 : -1}>
+            <button key={a.label} type="button" style={{ background: a.color, color: a.text || "#fff" }} onClick={() => act(a)} tabIndex={x < 0 ? 0 : -1}>
               {a.icon}
               <span>{a.label}</span>
             </button>
