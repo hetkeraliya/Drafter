@@ -85,7 +85,7 @@ export default function LoginPage() {
 
   return (
     <Screen bare>
-      <div className="flex flex-col items-center pt-6 text-center">
+      <div className="fade-up flex flex-col items-center pt-6 text-center">
         <AppIcon size={72} />
         <h1 className="mt-5 text-[34px] font-bold leading-tight tracking-[-0.03em]">Draftr</h1>
         <p className="mt-1 max-w-[32ch] text-[15px] text-[var(--muted)]">
@@ -93,7 +93,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <div className="mt-8">
+      <div className="fade-up mt-8" style={{ animationDelay: "90ms" }}>
         <Segmented
           items={[
             { id: "in", label: "Sign In" },
@@ -104,7 +104,7 @@ export default function LoginPage() {
         />
       </div>
 
-      <form onSubmit={onSubmit} className="mt-5">
+      <form onSubmit={onSubmit} className="fade-up mt-5" style={{ animationDelay: "160ms" }}>
         <div className="group">
           {mode === "up" && (
             <label className="cell">
