@@ -31,8 +31,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f1f1f1" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#eeeef0" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
   ],
   colorScheme: "light dark",
   viewportFit: "cover",
@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 };
 
 // Runs before first paint so a saved Light/Dark choice never flashes the wrong theme.
-const THEME_BOOT = `try{var p=JSON.parse(localStorage.getItem("draftr.prefs.v8")||"{}");if(p.theme==="light"||p.theme==="dark"){document.documentElement.dataset.theme=p.theme;var c=p.theme==="dark"?"#000000":"#f1f1f1";document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",c)})}}catch(e){}`;
+const THEME_BOOT = `try{var p=JSON.parse(localStorage.getItem("draftr.prefs.v8")||"{}");if(p.theme==="light"||p.theme==="dark"){document.documentElement.dataset.theme=p.theme;var c=p.theme==="dark"?"#0b0b0c":"#eeeef0";document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",c)})}}catch(e){}`;
 
 export default function RootLayout({
   children,
