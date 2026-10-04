@@ -35,6 +35,7 @@ export function DeskAssist() {
   const [sources, setSources] = useState<string[]>([]);
   const [size, setSize] = useState<ModelSize>("fast");
   const [apply, setApply] = useState<((text: string) => void) | null>(null);
+  const [auto, setAuto] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export function DeskAssist() {
       setSources([]);
       setSize(modelSize());
       setApply(() => request.onApply || null);
+      setAuto(request.question || "");
       setStatus("Runs on this device. Notes stay here.");
       setOpen(true);
     });
@@ -52,6 +54,15 @@ export function DeskAssist() {
       off();
     };
   }, []);
+
+  useEffect(() => {
+    if (open && auto) {
+      const q = auto;
+      setAuto("");
+      void ask("ask", q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, auto]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
