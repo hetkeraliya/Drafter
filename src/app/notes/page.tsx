@@ -1,7 +1,7 @@
 "use client";
 
-import { NotesView } from "@/components/NotesView";
+import { FoldersHome } from "@/components/FoldersHome";
 
 export default function NotesPage() {
-  return <NotesView folderId={null} />;
+  return <FoldersHome />;
 }
