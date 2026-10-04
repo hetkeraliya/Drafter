@@ -16,6 +16,8 @@ create table if not exists public.draftr_notes (
   deleted_at  timestamptz,
   parent_id   text,
   position    double precision,
+  canvas_x    double precision,
+  canvas_y    double precision,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   primary key (user_id, id)
@@ -35,3 +37,5 @@ create policy "draftr notes: own rows" on public.draftr_notes
 -- Folders and manual order (safe to re-run on an existing table).
 alter table public.draftr_notes add column if not exists parent_id text;
 alter table public.draftr_notes add column if not exists position double precision;
+alter table public.draftr_notes add column if not exists canvas_x double precision;
+alter table public.draftr_notes add column if not exists canvas_y double precision;
