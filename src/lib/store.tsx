@@ -14,6 +14,7 @@ import { mergeNotes, pullNotes, pushNotes, removeNotes } from "./cloud";
 import { makeSeedNotes } from "./seed";
 import { getSupabase } from "./supabase";
 import { applyTheme } from "./theme";
+import { childrenOf, descendantIds, ensurePositions, positionOf } from "./tree";
 import { todayKey } from "./thoughts";
 import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode } from "./types";
 
@@ -43,6 +44,7 @@ function hydrate(note: Note): Note {
     tags: [],
     deletedAt: null,
     remindAt: null,
+    parentId: null,
     ...note,
     items: (note.items || []).map((item) => ({ parentId: null, due: "", ...item })),
   };
@@ -64,6 +66,10 @@ interface Store {
   upsertNote: (note: Note) => void;
   patchNote: (id: string, patch: Partial<Note>) => void;
   deleteNote: (id: string) => void;
+  deleteMany: (ids: string[]) => void;
+  reorder: (ids: string[], parentId: string | null) => void;
+  moveInto: (id: string, folderId: string | null) => void;
+  stackNotes: (draggedId: string, targetId: string) => string;
   restoreNote: (id: string) => void;
   purgeNote: (id: string) => void;
   undoDelete: () => void;
@@ -90,7 +96,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [onboarded, setOnboarded] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
-  const [undo, setUndo] = useState<Note | null>(null);
+  const [undoIds, setUndoIds] = useState<string[]>([]);
   const [undoLabel, setUndoLabel] = useState("");
   const [notice, setNotice] = useState("");
   const notesRef = useRef<Note[]>([]);
@@ -110,10 +116,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const oldPrefs = rawPrefs ? null : localStorage.getItem(PREFS_OLD);
       setUser(rawUser ? JSON.parse(rawUser) : null);
       if (rawNotes) {
-        setNotes((JSON.parse(rawNotes) as Note[]).map(hydrate));
+        setNotes(ensurePositions((JSON.parse(rawNotes) as Note[]).map(hydrate)));
       } else if (localStorage.getItem(SEEDED_KEY) !== "1") {
         // Brand-new install: start with sample notes so the app never opens empty.
-        setNotes(makeSeedNotes().map(hydrate));
+        setNotes(ensurePositions(makeSeedNotes().map(hydrate)));
       }
       localStorage.setItem(SEEDED_KEY, "1");
       setOnboarded(rawOn === "1");
@@ -201,7 +207,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     pullNotes(supa)
       .then((remote) => {
-        if (active) setNotes((prev) => mergeNotes(prev, remote));
+        if (active) setNotes((prev) => ensurePositions(mergeNotes(prev, remote).map(hydrate)));
       })
       .catch((err) => {
         console.warn("Draftr cloud pull failed", err);
@@ -271,10 +277,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const upsertNote = useCallback((note: Note) => {
-    const next = hydrate({ ...note, updatedAt: note.updatedAt || new Date().toISOString() });
+    const base = hydrate({ ...note, updatedAt: note.updatedAt || new Date().toISOString() });
     setNotes((prev) => {
       const i = prev.findIndex((n) => n.id === note.id);
-      if (i === -1) return [next, ...prev];
+      if (i === -1) {
+        const first = childrenOf(prev, base.parentId || null)[0];
+        const position = typeof base.position === "number" ? base.position : first ? positionOf(first) - 1 : 0;
+        return [{ ...base, position }, ...prev];
+      }
+      const next = { ...base, position: typeof base.position === "number" ? base.position : prev[i].position };
       const copy = [...prev];
       copy[i] = next;
       return copy;
@@ -302,37 +313,125 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     noticeTimer.current = window.setTimeout(() => setNotice(""), 2600);
   }, []);
 
-  const deleteNote = useCallback((id: string) => {
-    const found = notesRef.current.find((n) => n.id === id);
-    if (found) {
-      window.clearTimeout(undoTimer.current);
-      setUndo(found);
-      setUndoLabel("Note moved to trash");
-      undoTimer.current = window.setTimeout(() => {
-        setUndo(null);
-        setUndoLabel("");
-      }, 6000);
+  // Deleting a folder sends everything inside it to the trash too, and Undo brings it all back.
+  const deleteMany = useCallback((ids: string[]) => {
+    const current = notesRef.current;
+    const targets = new Set<string>();
+    for (const id of ids) {
+      targets.add(id);
+      descendantIds(current, id).forEach((d) => targets.add(d));
     }
+    const live = current.filter((n) => targets.has(n.id) && !n.deletedAt).map((n) => n.id);
+    if (!live.length) return;
+    const liveSet = new Set(live);
     const stamp = new Date().toISOString();
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: stamp, updatedAt: stamp } : n)));
+    window.clearTimeout(undoTimer.current);
+    setUndoIds(live);
+    setUndoLabel(ids.length > 1 ? `${ids.length} items moved to trash` : "Moved to trash");
+    undoTimer.current = window.setTimeout(() => {
+      setUndoIds([]);
+      setUndoLabel("");
+    }, 6000);
+    setNotes((prev) => prev.map((n) => (liveSet.has(n.id) ? { ...n, deletedAt: stamp, updatedAt: stamp } : n)));
   }, []);
 
+  const deleteNote = useCallback((id: string) => deleteMany([id]), [deleteMany]);
+
   const restoreNote = useCallback((id: string) => {
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null, updatedAt: new Date().toISOString() } : n)));
+    setNotes((prev) => {
+      const note = prev.find((n) => n.id === id);
+      if (!note) return prev;
+      const stamp = new Date().toISOString();
+      const group = new Set<string>([id]);
+      if (note.type === "folder" && note.deletedAt) {
+        for (const childId of descendantIds(prev, id, true)) {
+          const child = prev.find((n) => n.id === childId);
+          if (child?.deletedAt === note.deletedAt) group.add(childId);
+        }
+      }
+      const parent = note.parentId ? prev.find((n) => n.id === note.parentId) : undefined;
+      const parentOk = Boolean(parent && !parent.deletedAt && parent.type === "folder");
+      return prev.map((n) =>
+        group.has(n.id)
+          ? { ...n, deletedAt: null, updatedAt: stamp, parentId: n.id === id && !parentOk ? null : n.parentId }
+          : n,
+      );
+    });
   }, []);
 
   const purgeNote = useCallback((id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setNotes((prev) => {
+      const gone = new Set<string>([id, ...descendantIds(prev, id, true)]);
+      return prev.filter((n) => !gone.has(n.id));
+    });
   }, []);
 
   const undoDelete = useCallback(() => {
-    if (!undo) return;
-    const id = undo.id;
-    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deletedAt: null, updatedAt: new Date().toISOString() } : n)));
+    if (!undoIds.length) return;
+    const back = new Set(undoIds);
+    const stamp = new Date().toISOString();
+    setNotes((prev) => prev.map((n) => (back.has(n.id) ? { ...n, deletedAt: null, updatedAt: stamp } : n)));
     window.clearTimeout(undoTimer.current);
-    setUndo(null);
+    setUndoIds([]);
     setUndoLabel("");
-  }, [undo]);
+  }, [undoIds]);
+
+  // Saves a new manual order for one folder (or the top level) after a drag.
+  const reorder = useCallback((ids: string[], parentId: string | null) => {
+    const stamp = new Date().toISOString();
+    const rank = new Map(ids.map((id, i) => [id, i]));
+    setNotes((prev) =>
+      prev.map((n) => {
+        const r = rank.get(n.id);
+        if (r === undefined) return n;
+        if (n.position === r && (n.parentId || null) === parentId) return n;
+        return { ...n, position: r, parentId, updatedAt: stamp };
+      }),
+    );
+  }, []);
+
+  // Moves a note or folder into another folder (null = top level). A folder can never go inside itself.
+  const moveInto = useCallback((id: string, folderId: string | null) => {
+    setNotes((prev) => {
+      if (folderId === id) return prev;
+      if (folderId && descendantIds(prev, id, true).includes(folderId)) return prev;
+      const first = childrenOf(prev, folderId)[0];
+      const position = first ? positionOf(first) - 1 : 0;
+      const stamp = new Date().toISOString();
+      return prev.map((n) => (n.id === id ? { ...n, parentId: folderId, position, updatedAt: stamp } : n));
+    });
+  }, []);
+
+  // Dropping one note on another makes a new folder holding both, in the place of the one underneath.
+  const stackNotes = useCallback((draggedId: string, targetId: string) => {
+    const folderId = uid() + uid();
+    setNotes((prev) => {
+      const target = prev.find((n) => n.id === targetId);
+      const dragged = prev.find((n) => n.id === draggedId);
+      if (!target || !dragged || target.id === dragged.id) return prev;
+      const stamp = new Date().toISOString();
+      const folder = hydrate({
+        id: folderId,
+        title: "New folder",
+        body: "",
+        type: "folder",
+        tint: "glass",
+        items: [],
+        attachments: [],
+        createdAt: stamp,
+        updatedAt: stamp,
+        parentId: target.parentId || null,
+        position: positionOf(target),
+      });
+      const moved = prev.map((n) => {
+        if (n.id === target.id) return { ...n, parentId: folderId, position: 0, updatedAt: stamp };
+        if (n.id === dragged.id) return { ...n, parentId: folderId, position: 1, updatedAt: stamp };
+        return n;
+      });
+      return [...moved, folder];
+    });
+    return folderId;
+  }, []);
 
   const mapItems = useCallback((noteId: string, fn: (items: ChecklistItem[]) => ChecklistItem[]) => {
     setNotes((prev) =>
@@ -435,6 +534,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertNote,
       patchNote,
       deleteNote,
+      deleteMany,
+      reorder,
+      moveInto,
+      stackNotes,
       restoreNote,
       purgeNote,
       undoDelete,
@@ -468,6 +571,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertNote,
       patchNote,
       deleteNote,
+      deleteMany,
+      reorder,
+      moveInto,
+      stackNotes,
       restoreNote,
       purgeNote,
       undoDelete,
