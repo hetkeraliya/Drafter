@@ -1,48 +1,62 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EllipsisIcon, SearchIcon, XCircleIcon } from "@/components/Icons";
+import { flushSync } from "react-dom";
+import { Canvas } from "@/components/Canvas";
+import { ChevronDown, ChevronLeft, MicIcon, PlusIcon, SearchIcon, SpinIcon, ViewIcon, XIcon } from "@/components/Icons";
 import { MenuSheet } from "@/components/MenuSheet";
 import { NoteGrid } from "@/components/NoteGrid";
-import { noteHref } from "@/components/Tile";
 import { QuickAdd } from "@/components/QuickAdd";
 import { Screen } from "@/components/Screen";
+import { noteHref } from "@/components/Tile";
+import { openDesk } from "@/lib/deskBus";
 import { useStore } from "@/lib/store";
-import { childrenOf, liveIndex } from "@/lib/tree";
+import { childrenOf, descendantIds, liveIndex } from "@/lib/tree";
+import type { Note } from "@/lib/types";
 import { useNav } from "@/lib/useNav";
+
+function matches(note: Note, q: string) {
+  return (
+    note.title.toLowerCase().includes(q) ||
+    note.body.toLowerCase().includes(q) ||
+    Boolean(note.tags?.some((t) => t.toLowerCase().includes(q))) ||
+    note.items.some((item) => item.label.toLowerCase().includes(q))
+  );
+}
 
 // The home screen, and the inside of any folder. folderId null means the top level.
 export function NotesView({ folderId }: { folderId: string | null }) {
-  const { ready, notes, patchNote, reorder, moveInto, stackNotes, deleteMany, remindNote } = useStore();
+  const { ready, notes, user, prefs, setView, patchNote, reorder, moveInto, stackNotes, deleteMany, remindNote, placeOn, placeMany } = useStore();
   const nav = useNav();
   const [menu, setMenu] = useState(false);
-  const [query, setQuery] = useState("");
+  const [adding, setAdding] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const [ask, setAsk] = useState("");
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [focusId, setFocusId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const index = useMemo(() => liveIndex(notes), [notes]);
   const folder = folderId ? index.get(folderId) : null;
   const parentFolder = folder?.parentId && index.get(folder.parentId)?.type === "folder" ? folder.parentId : null;
-
   const siblings = useMemo(() => childrenOf(notes, folderId), [notes, folderId]);
   const q = query.trim().toLowerCase();
 
-  const items = useMemo(() => {
-    if (!q) return siblings;
-    // searching looks through every note, folders included
-    return [...index.values()]
-      .filter(
-        (n) =>
-          n.type !== "folder" &&
-          (n.title.toLowerCase().includes(q) ||
-            n.body.toLowerCase().includes(q) ||
-            n.tags?.some((t) => t.toLowerCase().includes(q)) ||
-            n.items.some((item) => item.label.toLowerCase().includes(q))),
-      )
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [siblings, index, q]);
+  // the ids that match a search (a folder matches when something inside it does)
+  const hits = useMemo(() => {
+    if (!q) return null;
+    const set = new Set<string>();
+    for (const n of siblings) {
+      if (n.type === "folder") {
+        if (matches(n, q) || descendantIds(notes, n.id).some((id) => index.get(id) && matches(index.get(id)!, q))) set.add(n.id);
+      } else if (matches(n, q)) set.add(n.id);
+    }
+    return set;
+  }, [q, siblings, notes, index]);
+
+  const gridItems = useMemo(() => (hits ? siblings.filter((n) => hits.has(n.id)) : siblings), [hits, siblings]);
 
   useEffect(() => {
     if (!ready || !("Notification" in window) || Notification.permission !== "granted") return;
@@ -64,7 +78,7 @@ export function NotesView({ folderId }: { folderId: string | null }) {
     return (
       <Screen back={{ href: "/notes", label: "Notes" }}>
         <div className="fade-up px-6 pt-24 text-center">
-          <p className="text-[22px] font-bold tracking-[-0.03em]">Folder not found</p>
+          <p className="text-[20px] font-bold tracking-[-0.03em]">Folder not found</p>
           <p className="mt-1.5 text-[15px] text-[var(--muted)]">It may have been deleted.</p>
         </div>
       </Screen>
@@ -72,7 +86,14 @@ export function NotesView({ folderId }: { folderId: string | null }) {
   }
 
   const backHref = parentFolder ? `/folders/${parentFolder}` : "/notes";
-  const backLabel = parentFolder ? index.get(parentFolder)?.title || "Folder" : "Notes";
+  const grid = prefs.view === "grid";
+  const initial = (user?.name || "D").trim().charAt(0).toUpperCase() || "D";
+  const folderQuery = folderId ? `&folder=${folderId}` : "";
+
+  function openAdd() {
+    flushSync(() => setAdding(true));
+    document.getElementById("quick-input")?.focus();
+  }
 
   function stopSearch() {
     setQuery("");
@@ -84,104 +105,120 @@ export function NotesView({ folderId }: { folderId: string | null }) {
     setPicked(new Set());
   }
 
-  const trailing = selecting ? (
-    <button type="button" className="nav-btn strong" onClick={leaveSelect}>
-      Done
-    </button>
-  ) : (
-    <>
-      <button type="button" className="nav-btn" aria-label="Search" onClick={() => setSearching((v) => !v)}>
-        <SearchIcon size={20} />
-      </button>
-      <button type="button" className="nav-btn" aria-label="Menu" onClick={() => setMenu(true)}>
-        <EllipsisIcon size={26} />
-      </button>
-    </>
-  );
+  const toggle = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
-  const title = folder ? folder.title || "Folder" : "Notes";
+  const common = {
+    open: (note: Note) => nav.go(noteHref(note)),
+    stack: (dragged: string, target: string) => stackNotes(dragged, target),
+    intoFolder: (dragged: string, target: string) => moveInto(dragged, target),
+    toParent: (dragged: string) => moveInto(dragged, parentFolder),
+    toggle,
+  };
 
   return (
     <>
-      <Screen
-        title={title}
-        back={folder ? { href: backHref, label: backLabel } : undefined}
-        large={false}
-        trailing={trailing}
-      >
-        {folder ? (
-          <input
-            className="folder-title"
-            value={folder.title}
-            placeholder="Folder name"
-            aria-label="Folder name"
-            enterKeyHint="done"
-            onChange={(e) => patchNote(folder.id, { title: e.target.value })}
-          />
-        ) : (
-          <h1 className="home-title">Notes</h1>
-        )}
-
-        {searching && (
-          <div className="search fade-up mb-4">
-            <span className="glass">
-              <SearchIcon />
-            </span>
-            <input
-              ref={searchRef}
-              type="search"
-              enterKeyHint="search"
-              autoCorrect="off"
-              placeholder="Search"
-              aria-label="Search notes"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") stopSearch();
-              }}
-            />
-            <button type="button" className="clear" onClick={stopSearch} aria-label="Close search">
-              <XCircleIcon size={16} />
-            </button>
+      <header className="top">
+        <div className="top-row">
+          <div className="top-left">
+            {folder ? (
+              <button type="button" data-drop="parent" className="icon-btn back-btn -ml-2" aria-label="Back" onClick={() => nav.back(backHref)}>
+                <ChevronLeft size={22} />
+              </button>
+            ) : (
+              <span className="avatar" aria-hidden>
+                {initial}
+              </span>
+            )}
+            {folder ? (
+              <input
+                className="top-title"
+                value={folder.title}
+                placeholder="Folder name"
+                aria-label="Folder name"
+                enterKeyHint="done"
+                onChange={(e) => patchNote(folder.id, { title: e.target.value })}
+              />
+            ) : (
+              <button type="button" className="top-title" onClick={() => setMenu(true)} aria-label="Menu">
+                <span>Notes</span>
+                <ChevronDown />
+              </button>
+            )}
           </div>
-        )}
+          {selecting ? (
+            <button type="button" className="nav-btn strong" onClick={leaveSelect}>
+              Done
+            </button>
+          ) : (
+            <div className="flex items-center">
+              {folder && (
+                <button type="button" className="icon-btn" aria-label="Menu" onClick={() => setMenu(true)}>
+                  <ChevronDown size={18} />
+                </button>
+              )}
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={grid ? "Show the desk" : "Show a grid"}
+                onClick={() => setView(grid ? "canvas" : "grid")}
+              >
+                <ViewIcon grid={!grid} />
+              </button>
+            </div>
+          )}
+        </div>
+        <p className="top-count">
+          {siblings.length} {siblings.length === 1 ? "note" : "notes"}
+        </p>
+      </header>
 
-        {items.length === 0 ? (
-          <div className="px-6 pb-10 pt-24 text-center">
-            <p className="text-[20px] font-semibold tracking-[-0.03em]">{q ? "Nothing found" : folder ? "Empty folder" : "No notes yet"}</p>
-            <p className="mx-auto mt-1.5 max-w-[28ch] text-[15px] text-[var(--muted)]">
-              {q ? "Try another word." : folder ? "Drag a note onto this folder, or tap + to add one." : "Tap + to write your first note."}
+      {siblings.length === 0 ? (
+        <div className="fixed inset-0 grid place-items-center px-8 text-center">
+          <div>
+            <p className="text-[20px] font-bold tracking-[-0.03em]">{folder ? "Empty folder" : "No notes yet"}</p>
+            <p className="mx-auto mt-1.5 max-w-[26ch] text-[15px] text-[var(--muted)]">
+              {folder ? "Drop a card on this folder, or tap + to add one." : "Tap + to write your first note."}
             </p>
           </div>
-        ) : (
-          <NoteGrid
-            items={items}
-            kidsOf={(id) => childrenOf(notes, id)}
-            canDrag={!q && !selecting}
-            selecting={selecting}
-            selected={picked}
-            hasParent={Boolean(folder)}
-            actions={{
-              open: (note) => nav.go(noteHref(note)),
-              reorder: (ids) => reorder(ids, folderId),
-              stack: (dragged, target) => stackNotes(dragged, target),
-              intoFolder: (dragged, target) => moveInto(dragged, target),
-              toParent: (dragged) => moveInto(dragged, parentFolder),
-              toggle: (id) =>
-                setPicked((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(id)) next.delete(id);
-                  else next.add(id);
-                  return next;
-                }),
-            }}
-          />
-        )}
-      </Screen>
+        </div>
+      ) : grid ? (
+        <div className="grid-view">
+          {gridItems.length === 0 ? (
+            <p className="pt-24 text-center text-[15px] text-[var(--muted)]">Nothing found.</p>
+          ) : (
+            <NoteGrid
+              items={gridItems}
+              kidsOf={(id) => childrenOf(notes, id)}
+              canDrag={!q && !selecting}
+              selecting={selecting}
+              selected={picked}
+              hasParent={Boolean(folder)}
+              actions={{ ...common, reorder: (ids) => reorder(ids, folderId) }}
+            />
+          )}
+        </div>
+      ) : (
+        <Canvas
+          items={siblings}
+          kidsOf={(id) => childrenOf(notes, id)}
+          selecting={selecting}
+          selected={picked}
+          dim={hits}
+          focusId={focusId}
+          onFocused={() => setFocusId(null)}
+          actions={{ ...common, place: placeOn, placeMany }}
+        />
+      )}
 
       {selecting ? (
         <div className="select-bar">
-          <span>{picked.size ? `${picked.size} selected` : "Select items"}</span>
+          <span>{picked.size ? `${picked.size} selected` : "Select notes"}</span>
           <button
             type="button"
             className="btn btn-sm"
@@ -195,8 +232,68 @@ export function NotesView({ folderId }: { folderId: string | null }) {
           </button>
         </div>
       ) : (
-        <QuickAdd folderId={folderId} />
+        !adding && (
+          <div className="dock">
+            {searching ? (
+              <div className="dock-row">
+                <label className="dock-ask">
+                  <SearchIcon size={18} />
+                  <input
+                    ref={searchRef}
+                    type="search"
+                    enterKeyHint="search"
+                    autoCorrect="off"
+                    placeholder="Search notes"
+                    aria-label="Search notes"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") stopSearch();
+                    }}
+                  />
+                </label>
+                <button type="button" className="icon-btn" aria-label="Close search" onClick={stopSearch}>
+                  <XIcon size={20} />
+                </button>
+              </div>
+            ) : (
+              <div className="dock-row">
+                <button type="button" className="icon-btn" aria-label="Search" onClick={() => setSearching(true)}>
+                  <SearchIcon size={20} />
+                </button>
+                <form
+                  className="dock-ask"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const question = ask.trim();
+                    setAsk("");
+                    openDesk({ text: "", question: question || undefined });
+                  }}
+                >
+                  <SpinIcon size={17} />
+                  <input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Ask your notes" aria-label="Ask your notes" enterKeyHint="send" />
+                </form>
+                <button type="button" className="icon-btn" aria-label="Voice note" onClick={() => nav.go(`/notes/new?type=audio${folderQuery}`, "up")}>
+                  <MicIcon size={21} />
+                </button>
+                <button type="button" className="dock-plus" aria-label="New note" onClick={openAdd}>
+                  <PlusIcon size={22} />
+                </button>
+              </div>
+            )}
+          </div>
+        )
       )}
+
+      <QuickAdd
+        folderId={folderId}
+        open={adding && !selecting}
+        onClose={() => setAdding(false)}
+        onAdded={(id) => {
+          setFocusId(id);
+          if (grid) window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
 
       <MenuSheet
         open={menu}
