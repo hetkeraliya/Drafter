@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Canvas } from "@/components/Canvas";
-import { ChevronDown, ChevronLeft, MicIcon, PlusIcon, SearchIcon, SpinIcon, ViewIcon, XIcon } from "@/components/Icons";
+import { ChevronLeft, EllipsisIcon, MicIcon, PlusIcon, SearchIcon, SpinIcon, ViewIcon, XIcon } from "@/components/Icons";
 import { MenuSheet } from "@/components/MenuSheet";
+import { MoveSheet } from "@/components/MoveSheet";
 import { NoteGrid } from "@/components/NoteGrid";
 import { QuickAdd } from "@/components/QuickAdd";
 import { Screen } from "@/components/Screen";
@@ -25,8 +26,8 @@ function matches(note: Note, q: string) {
 }
 
 // The home screen, and the inside of any folder. folderId null means the top level.
-export function NotesView({ folderId }: { folderId: string | null }) {
-  const { ready, notes, user, prefs, setView, patchNote, reorder, moveInto, stackNotes, deleteMany, remindNote, placeOn, placeMany } = useStore();
+export function NotesView({ folderId }: { folderId: string }) {
+  const { ready, notes, prefs, setView, patchNote, reorder, moveInto, stackNotes, deleteMany, remindNote, placeOn, placeMany } = useStore();
   const nav = useNav();
   const [menu, setMenu] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -36,6 +37,10 @@ export function NotesView({ folderId }: { folderId: string | null }) {
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
+  const [name, setName] = useState("");
+  const [namedFor, setNamedFor] = useState("");
+  const nameTimer = useRef<number | undefined>(undefined);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const index = useMemo(() => liveIndex(notes), [notes]);
@@ -72,9 +77,18 @@ export function NotesView({ folderId }: { folderId: string | null }) {
     if (searching) searchRef.current?.focus();
   }, [searching]);
 
+  useEffect(() => {
+    if (folder && namedFor !== folder.id) {
+      setNamedFor(folder.id);
+      setName(folder.title);
+    }
+  }, [folder, namedFor]);
+
+  useEffect(() => () => window.clearTimeout(nameTimer.current), []);
+
   if (!ready) return null;
 
-  if (folderId && !folder) {
+  if (!folder) {
     return (
       <Screen back={{ href: "/notes", label: "Notes" }}>
         <div className="fade-up px-6 pt-24 text-center">
@@ -87,8 +101,7 @@ export function NotesView({ folderId }: { folderId: string | null }) {
 
   const backHref = parentFolder ? `/folders/${parentFolder}` : "/notes";
   const grid = prefs.view === "grid";
-  const initial = (user?.name || "D").trim().charAt(0).toUpperCase() || "D";
-  const folderQuery = folderId ? `&folder=${folderId}` : "";
+  const folderQuery = `&folder=${folderId}`;
 
   function openAdd() {
     flushSync(() => setAdding(true));
@@ -126,30 +139,32 @@ export function NotesView({ folderId }: { folderId: string | null }) {
       <header className="top">
         <div className="top-row">
           <div className="top-left">
-            {folder ? (
-              <button type="button" data-drop="parent" className="icon-btn back-btn -ml-2" aria-label="Back" onClick={() => nav.back(backHref)}>
-                <ChevronLeft size={22} />
-              </button>
-            ) : (
-              <span className="avatar" aria-hidden>
-                {initial}
-              </span>
-            )}
-            {folder ? (
-              <input
-                className="top-title"
-                value={folder.title}
-                placeholder="Folder name"
-                aria-label="Folder name"
-                enterKeyHint="done"
-                onChange={(e) => patchNote(folder.id, { title: e.target.value })}
-              />
-            ) : (
-              <button type="button" className="top-title" onClick={() => setMenu(true)} aria-label="Menu">
-                <span>Notes</span>
-                <ChevronDown />
-              </button>
-            )}
+            <button
+              type="button"
+              {...(parentFolder ? { "data-drop": "parent" } : {})}
+              className="icon-btn back-btn -ml-2"
+              aria-label="Back"
+              onClick={() => nav.back(backHref)}
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <input
+              className="top-title"
+              value={name}
+              placeholder="Folder name"
+              aria-label="Folder name"
+              enterKeyHint="done"
+              onChange={(e) => {
+                const value = e.target.value;
+                setName(value);
+                window.clearTimeout(nameTimer.current);
+                nameTimer.current = window.setTimeout(() => patchNote(folderId, { title: value }), 350);
+              }}
+              onBlur={() => {
+                window.clearTimeout(nameTimer.current);
+                if (folder && name !== folder.title) patchNote(folderId, { title: name });
+              }}
+            />
           </div>
           {selecting ? (
             <button type="button" className="nav-btn strong" onClick={leaveSelect}>
@@ -157,11 +172,6 @@ export function NotesView({ folderId }: { folderId: string | null }) {
             </button>
           ) : (
             <div className="flex items-center">
-              {folder && (
-                <button type="button" className="icon-btn" aria-label="Menu" onClick={() => setMenu(true)}>
-                  <ChevronDown size={18} />
-                </button>
-              )}
               <button
                 type="button"
                 className="icon-btn"
@@ -169,6 +179,9 @@ export function NotesView({ folderId }: { folderId: string | null }) {
                 onClick={() => setView(grid ? "canvas" : "grid")}
               >
                 <ViewIcon grid={!grid} />
+              </button>
+              <button type="button" className="icon-btn" aria-label="Menu" onClick={() => setMenu(true)}>
+                <EllipsisIcon size={24} />
               </button>
             </div>
           )}
@@ -181,10 +194,8 @@ export function NotesView({ folderId }: { folderId: string | null }) {
       {siblings.length === 0 ? (
         <div className="fixed inset-0 grid place-items-center px-8 text-center">
           <div>
-            <p className="text-[20px] font-bold tracking-[-0.03em]">{folder ? "Empty folder" : "No notes yet"}</p>
-            <p className="mx-auto mt-1.5 max-w-[26ch] text-[15px] text-[var(--muted)]">
-              {folder ? "Drop a card on this folder, or tap + to add one." : "Tap + to write your first note."}
-            </p>
+            <p className="text-[20px] font-bold tracking-[-0.03em]">Empty folder</p>
+            <p className="mx-auto mt-1.5 max-w-[26ch] text-[15px] text-[var(--muted)]">Tap + to write your first note here.</p>
           </div>
         </div>
       ) : grid ? (
@@ -219,17 +230,22 @@ export function NotesView({ folderId }: { folderId: string | null }) {
       {selecting ? (
         <div className="select-bar">
           <span>{picked.size ? `${picked.size} selected` : "Select notes"}</span>
-          <button
-            type="button"
-            className="btn btn-sm"
-            disabled={!picked.size}
-            onClick={() => {
-              deleteMany([...picked]);
-              leaveSelect();
-            }}
-          >
-            Delete
-          </button>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-sm btn-quiet" disabled={!picked.size} onClick={() => setMoving(true)}>
+              Move
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={!picked.size}
+              onClick={() => {
+                deleteMany([...picked]);
+                leaveSelect();
+              }}
+            >
+              Delete
+            </button>
+          </div>
         </div>
       ) : (
         !adding && (
@@ -292,6 +308,17 @@ export function NotesView({ folderId }: { folderId: string | null }) {
         onAdded={(id) => {
           setFocusId(id);
           if (grid) window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
+
+      <MoveSheet
+        open={moving}
+        ids={[...picked]}
+        currentId={folderId}
+        onClose={() => setMoving(false)}
+        onMoved={() => {
+          setMoving(false);
+          leaveSelect();
         }}
       />
 
