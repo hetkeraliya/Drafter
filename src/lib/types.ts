@@ -1,4 +1,4 @@
-export type NoteType = "text" | "todo" | "images" | "audio" | "file";
+export type NoteType = "text" | "todo" | "images" | "audio" | "file" | "folder";
 
 export type Tint = "mint" | "sky" | "lilac" | "sand" | "rose" | "cream" | "glass";
 
@@ -41,6 +41,10 @@ export interface Note {
   tags?: string[];
   deletedAt?: string | null;
   remindAt?: string | null;
+  /** id of the folder this note sits in; empty means the top level */
+  parentId?: string | null;
+  /** manual order inside its folder, lowest first */
+  position?: number | null;
 }
 
 export interface SessionUser {
