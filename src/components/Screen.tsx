@@ -49,7 +49,7 @@ export function Screen({ title = "", large = false, back, leading, trailing, foo
             <div className="nav-side">
               {leading ??
                 (back && (
-                  <button type="button" className="nav-btn -ml-1 pl-0" onClick={() => nav.back(back.href)} aria-label={`Back to ${back.label ?? "previous"}`}>
+                  <button type="button" data-drop="parent" className="nav-btn back-btn -ml-1 pl-0" onClick={() => nav.back(back.href)} aria-label={`Back to ${back.label ?? "previous"}`}>
                     <ChevronLeft />
                     <span>{back.label ?? "Back"}</span>
                   </button>
