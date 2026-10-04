@@ -1,32 +1,40 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptic";
 import { newId, useStore } from "@/lib/store";
 import { useNav } from "@/lib/useNav";
 import type { Note } from "@/lib/types";
-import { CheckIcon, PlusIcon } from "./Icons";
+import { CheckIcon } from "./Icons";
 
 type Kind = "memo" | "todo";
 
 // One round button. It opens a single line at the bottom of the screen: type, tick, done.
-export function QuickAdd({ folderId }: { folderId: string | null }) {
+export function QuickAdd({
+  folderId,
+  open,
+  onClose,
+  onAdded,
+}: {
+  folderId: string | null;
+  open: boolean;
+  onClose: () => void;
+  onAdded?: (id: string) => void;
+}) {
   const { upsertNote } = useStore();
   const nav = useNav();
-  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [kind, setKind] = useState<Kind>("memo");
   const input = useRef<HTMLTextAreaElement>(null);
 
-  function show() {
-    setOpen(true);
-    // focus inside the tap so the keyboard opens on iPhone
-    input.current?.focus();
-  }
+  // the parent focuses this inside the tap that opened it (needed for the keyboard on iPhone)
+  useEffect(() => {
+    if (open) input.current?.focus();
+  }, [open]);
 
   function hide() {
     input.current?.blur();
-    setOpen(false);
+    onClose();
   }
 
   function save() {
@@ -61,6 +69,7 @@ export function QuickAdd({ folderId }: { folderId: string | null }) {
             parentId: folderId,
           };
     upsertNote(note);
+    onAdded?.(note.id);
     haptic(10);
     setText("");
     input.current?.focus(); // stay open, ready for the next one
@@ -73,12 +82,6 @@ export function QuickAdd({ folderId }: { folderId: string | null }) {
 
   return (
     <>
-      {!open && (
-        <button type="button" className="add-fab" aria-label="New note" onClick={show}>
-          <PlusIcon size={26} />
-        </button>
-      )}
-
       <div className="add-bar" data-open={open} inert={!open}>
         <div className="add-types">
           <button type="button" className="add-type" aria-pressed={kind === "memo"} onClick={() => setKind("memo")}>
@@ -103,6 +106,7 @@ export function QuickAdd({ folderId }: { folderId: string | null }) {
         </div>
         <div className="add-row">
           <textarea
+            id="quick-input"
             ref={input}
             rows={1}
             value={text}
