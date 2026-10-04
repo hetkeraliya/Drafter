@@ -1,4 +1,4 @@
-Delete these from the repo before pushing (they are replaced by new components):
+Delete these from the repo before pushing (replaced by newer components):
 
 src/app/motion/            (whole folder)
 src/components/NoteCard.tsx
