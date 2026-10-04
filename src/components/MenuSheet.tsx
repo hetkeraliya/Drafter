@@ -7,15 +7,7 @@ import { useStore } from "@/lib/store";
 import { useNav } from "@/lib/useNav";
 import { isStandalone, type BeforeInstallPromptEvent } from "@/lib/pwa";
 import type { PaperTheme } from "@/lib/types";
-import {
-  ChevronRight,
-  DownloadAppIcon,
-  DownloadIcon,
-  InfoIcon,
-  PhotoIcon,
-  SparkleIcon,
-  TrashIcon,
-} from "./Icons";
+import { ChevronRight } from "./Icons";
 import { Segmented } from "./Segmented";
 import { Sheet } from "./Sheet";
 
@@ -26,23 +18,18 @@ const THEMES: { id: PaperTheme; label: string }[] = [
 ];
 
 function Row({
-  icon,
   label,
   detail,
   chevron = true,
   onClick,
 }: {
-  icon: ReactNode;
-  label: string;
+  label: ReactNode;
   detail?: string;
   chevron?: boolean;
   onClick: () => void;
 }) {
   return (
     <button type="button" className="cell" onClick={onClick}>
-      <span className="cell-icon">
-        {icon}
-      </span>
       <span className="flex-1">{label}</span>
       {detail && <span className="text-[var(--muted)]">{detail}</span>}
       {chevron && (
@@ -55,7 +42,7 @@ function Row({
 }
 
 // No open/close animation on purpose: the menu appears and disappears instantly.
-export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function MenuSheet({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect?: () => void }) {
   const { user, signOut, loadSamples, notes, prefs, setTheme, trash } = useStore();
   const nav = useNav();
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -79,14 +66,6 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
     };
   }, []);
 
-  const name = user?.name || "Guest";
-  const initials = name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
   const go = (href: string) => {
     onClose();
     nav.go(href);
@@ -96,7 +75,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
     <Sheet
       open={open}
       onClose={onClose}
-      title="Draftr"
+      title={user?.name || "Draftr"}
       animate={false}
       action={
         <button type="button" className="nav-btn strong" onClick={onClose}>
@@ -105,18 +84,16 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
       }
     >
       <div className="group">
-        <div className="cell">
-          <span className="grid h-14 w-14 flex-none place-items-center rounded-full bg-[var(--ink)] text-[21px] font-bold text-[var(--paper)]">
-            {initials || "D"}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[17px] font-semibold">{name}</p>
-            <p className="truncate text-[15px] text-[var(--muted)]">{user?.email || "demo@draftr.app"}</p>
-            <p className="mt-0.5 text-[13px] text-[var(--muted)]">
-              {prefs.streak ? `${prefs.streak}-day writing streak` : "Write today to start a streak"}
-            </p>
-          </div>
-        </div>
+        {onSelect && <Row label="Select" chevron={false} onClick={onSelect} />}
+        <Row label="Thought of the day" onClick={() => go("/thought")} />
+        <Row
+          label="Desk assistant"
+          onClick={() => {
+            onClose();
+            openDesk({ text: "" });
+          }}
+        />
+        <Row label="Trash" detail={trash.length ? String(trash.length) : ""} onClick={() => go("/trash")} />
       </div>
 
       <p className="group-label">Appearance</p>
@@ -126,29 +103,6 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
 
       <div className="group mt-6">
         <Row
-          icon={<SparkleIcon size={18} />}
-          label="Desk assistant"
-          onClick={() => {
-            onClose();
-            openDesk({ text: "" });
-          }}
-        />
-        <Row icon={<TrashIcon size={18} />} label="Trash" detail={trash.length ? String(trash.length) : ""} onClick={() => go("/trash")} />
-        <Row icon={<InfoIcon size={18} />} label="About" onClick={() => go("/about")} />
-      </div>
-
-      <div className="group mt-6">
-        <Row
-          icon={<DownloadIcon size={18} />}
-          label="Export all notes"
-          chevron={false}
-          onClick={() => {
-            downloadText("draftr-notes.txt", notes.map((n) => `# ${n.title}\n${n.body}`).join("\n\n"));
-            onClose();
-          }}
-        />
-        <Row
-          icon={<PhotoIcon size={18} />}
           label="Load sample notes"
           chevron={false}
           onClick={() => {
@@ -156,20 +110,26 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
             onClose();
           }}
         />
-        {!installed && (
+        <Row
+          label="Export all notes"
+          chevron={false}
+          onClick={() => {
+            downloadText("draftr-notes.txt", notes.filter((n) => n.type !== "folder").map((n) => `# ${n.title}\n${n.body}`).join("\n\n"));
+            onClose();
+          }}
+        />
+        {!installed && installEvent && (
           <Row
-            icon={<DownloadAppIcon size={18} />}
-            label={installEvent ? "Install app" : "Add to Home Screen"}
+            label="Install app"
             chevron={false}
             onClick={async () => {
-              if (installEvent) {
-                await installEvent.prompt();
-                setInstallEvent(null);
-              }
+              await installEvent.prompt();
+              setInstallEvent(null);
               onClose();
             }}
           />
         )}
+        <Row label="About" onClick={() => go("/about")} />
       </div>
 
       <div className="group mt-6">
@@ -182,12 +142,9 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
             nav.go("/login", "back");
           }}
         >
-          Sign Out
+          Sign out
         </button>
       </div>
-      <p className="group-foot text-center">
-        {notes.length} {notes.length === 1 ? "note" : "notes"} on this device
-      </p>
     </Sheet>
   );
 }
