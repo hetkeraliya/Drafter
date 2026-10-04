@@ -1,4 +1,4 @@
-const VERSION = "draftr-pwa-v12";
+const VERSION = "draftr-pwa-v13";
 const SHELL = [
   "/",
   "/login",
