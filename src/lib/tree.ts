@@ -64,3 +64,36 @@ export function ensurePositions(notes: Note[]): Note[] {
   });
   return notes.map((note) => (assigned.has(note.id) ? { ...note, position: assigned.get(note.id)! } : note));
 }
+
+export const INBOX_ID = "inbox";
+
+// The top level only holds folders. Any loose note there moves into a folder called "Notes", created if needed.
+export function adoptLoose(notes: Note[]): Note[] {
+  const index = liveIndex(notes);
+  const loose = notes.filter((n) => !n.deletedAt && n.type !== "folder" && effectiveParent(n, index) === null);
+  if (loose.length === 0) return notes;
+  const stamp = new Date().toISOString();
+  const looseIds = new Set(loose.map((n) => n.id));
+  const existing = notes.find((n) => n.id === INBOX_ID);
+  const next = notes.map((n) => {
+    if (looseIds.has(n.id)) return { ...n, parentId: INBOX_ID };
+    if (n.id === INBOX_ID && n.deletedAt) return { ...n, deletedAt: null, updatedAt: stamp };
+    return n;
+  });
+  if (existing) return next;
+  const tops = notes.filter((n) => !n.deletedAt && n.type === "folder" && !n.parentId).map(positionOf);
+  next.push({
+    id: INBOX_ID,
+    title: "Notes",
+    body: "",
+    type: "folder",
+    tint: "glass",
+    items: [],
+    attachments: [],
+    createdAt: stamp,
+    updatedAt: stamp,
+    parentId: null,
+    position: (tops.length ? Math.min(...tops) : 0) - 1,
+  });
+  return next;
+}
