@@ -217,3 +217,33 @@ export function GoogleMark({ size = 18 }: P) {
     </svg>
   );
 }
+
+export const SpinIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M13 3L5 13.5h6L10 21l8-10.5h-6L13 3z" />
+  </svg>
+);
+
+export const ChevronDown = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
+export const ViewIcon = ({ size = 20, grid = false }: { size?: number; grid?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+    {grid ? (
+      <>
+        <rect x="4" y="4" width="6.5" height="6.5" rx="1.6" />
+        <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" />
+        <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" />
+        <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" />
+      </>
+    ) : (
+      <>
+        <rect x="3.5" y="5" width="9" height="7.5" rx="1.8" transform="rotate(-6 8 8.7)" />
+        <rect x="11.5" y="11.5" width="9" height="7.5" rx="1.8" transform="rotate(5 16 15.2)" />
+      </>
+    )}
+  </svg>
+);
