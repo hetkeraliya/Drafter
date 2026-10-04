@@ -10,6 +10,8 @@ export type SortMode = "new" | "old" | "type";
 
 export type PaperTheme = "system" | "light" | "dark";
 
+export type ViewMode = "canvas" | "grid";
+
 export interface ChecklistItem {
   id: string;
   label: string;
@@ -45,6 +47,9 @@ export interface Note {
   parentId?: string | null;
   /** manual order inside its folder, lowest first */
   position?: number | null;
+  /** where the card sits on the canvas (inside its folder); empty until first placed */
+  canvasX?: number | null;
+  canvasY?: number | null;
 }
 
 export interface SessionUser {
@@ -56,6 +61,7 @@ export interface SessionUser {
 
 export interface Prefs {
   theme: PaperTheme;
+  view: ViewMode;
   sort: SortMode;
   streak: number;
   lastWriteDay: string;
