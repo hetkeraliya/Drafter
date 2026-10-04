@@ -12,11 +12,13 @@ type Kind = "memo" | "todo";
 // One round button. It opens a single line at the bottom of the screen: type, tick, done.
 export function QuickAdd({
   folderId,
+  mode = "note",
   open,
   onClose,
   onAdded,
 }: {
   folderId: string | null;
+  mode?: "note" | "folder";
   open: boolean;
   onClose: () => void;
   onAdded?: (id: string) => void;
@@ -41,6 +43,26 @@ export function QuickAdd({
     const value = text.trim();
     if (!value) return;
     const now = new Date().toISOString();
+    if (mode === "folder") {
+      const folder: Note = {
+        id: newId(),
+        title: value.slice(0, 60),
+        body: "",
+        type: "folder",
+        tint: "glass",
+        items: [],
+        attachments: [],
+        createdAt: now,
+        updatedAt: now,
+        parentId: folderId,
+      };
+      upsertNote(folder);
+      onAdded?.(folder.id);
+      haptic(10);
+      setText("");
+      hide();
+      return;
+    }
     const lines = value.split("\n").map((l) => l.trim()).filter(Boolean);
     const note: Note =
       kind === "todo"
@@ -83,7 +105,7 @@ export function QuickAdd({
   return (
     <>
       <div className="add-bar" data-open={open} inert={!open}>
-        <div className="add-types">
+        <div className="add-types" hidden={mode === "folder"}>
           <button type="button" className="add-type" aria-pressed={kind === "memo"} onClick={() => setKind("memo")}>
             Memo
           </button>
@@ -110,8 +132,8 @@ export function QuickAdd({
             ref={input}
             rows={1}
             value={text}
-            placeholder={kind === "todo" ? "One item per line" : "Write something"}
-            aria-label="New note"
+            placeholder={mode === "folder" ? "Folder name" : kind === "todo" ? "One item per line" : "Write something"}
+            aria-label={mode === "folder" ? "New folder" : "New note"}
             onChange={(e) => {
               setText(e.target.value);
               e.target.style.height = "auto";
