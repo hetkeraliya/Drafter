@@ -1,6 +1,6 @@
 import type { PaperTheme } from "./types";
 
-export const THEME_COLORS = { light: "#f1f1f1", dark: "#000000" } as const;
+export const THEME_COLORS = { light: "#eeeef0", dark: "#0b0b0c" } as const;
 
 export function isDarkNow(theme: PaperTheme) {
   if (theme === "dark") return true;
