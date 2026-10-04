@@ -16,7 +16,7 @@ import { getSupabase } from "./supabase";
 import { applyTheme } from "./theme";
 import { childrenOf, descendantIds, ensurePositions, positionOf } from "./tree";
 import { todayKey } from "./thoughts";
-import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode } from "./types";
+import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode, ViewMode } from "./types";
 
 const NOTES_KEY = "draftr.notes.v7";
 const NOTES_OLD = "draftr.notes.v6";
@@ -28,6 +28,7 @@ const SEEDED_KEY = "draftr.seeded.v1";
 
 const DEFAULT_PREFS: Prefs = {
   theme: "system",
+  view: "canvas",
   sort: "new",
   streak: 0,
   lastWriteDay: "",
@@ -84,6 +85,9 @@ interface Store {
   loadSamples: () => void;
   setTheme: (theme: PaperTheme) => void;
   setSort: (sort: SortMode) => void;
+  setView: (view: ViewMode) => void;
+  placeOn: (id: string, x: number, y: number) => void;
+  placeMany: (spots: { id: string; x: number; y: number }[]) => void;
   bumpStreak: () => void;
   setThoughtCursor: (n: number) => void;
 }
@@ -398,7 +402,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const first = childrenOf(prev, folderId)[0];
       const position = first ? positionOf(first) - 1 : 0;
       const stamp = new Date().toISOString();
-      return prev.map((n) => (n.id === id ? { ...n, parentId: folderId, position, updatedAt: stamp } : n));
+      return prev.map((n) => (n.id === id ? { ...n, parentId: folderId, position, canvasX: null, canvasY: null, updatedAt: stamp } : n));
     });
   }, []);
 
@@ -422,10 +426,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updatedAt: stamp,
         parentId: target.parentId || null,
         position: positionOf(target),
+        canvasX: target.canvasX ?? null,
+        canvasY: target.canvasY ?? null,
       });
       const moved = prev.map((n) => {
-        if (n.id === target.id) return { ...n, parentId: folderId, position: 0, updatedAt: stamp };
-        if (n.id === dragged.id) return { ...n, parentId: folderId, position: 1, updatedAt: stamp };
+        if (n.id === target.id) return { ...n, parentId: folderId, position: 0, canvasX: null, canvasY: null, updatedAt: stamp };
+        if (n.id === dragged.id) return { ...n, parentId: folderId, position: 1, canvasX: null, canvasY: null, updatedAt: stamp };
         return n;
       });
       return [...moved, folder];
@@ -480,6 +486,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (when && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().catch(() => {});
     }
+  }, []);
+
+  // Moves one card on the canvas. Placing a card never reorders anything else.
+  const placeOn = useCallback((id: string, x: number, y: number) => {
+    const stamp = new Date().toISOString();
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, canvasX: Math.round(x), canvasY: Math.round(y), updatedAt: stamp } : n)));
+  }, []);
+
+  // Saves the first automatic placement of several cards at once, so the layout stays put afterwards.
+  const placeMany = useCallback((spots: { id: string; x: number; y: number }[]) => {
+    if (!spots.length) return;
+    const at = new Map(spots.map((s) => [s.id, s]));
+    setNotes((prev) =>
+      prev.map((n) => {
+        const s = at.get(n.id);
+        return s ? { ...n, canvasX: Math.round(s.x), canvasY: Math.round(s.y) } : n;
+      }),
+    );
   }, []);
 
   // Adds any sample note that is missing (or brings a trashed one back). Never replaces your own notes.
@@ -552,6 +576,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loadSamples,
       setTheme: (theme: PaperTheme) => patchPrefs({ theme }),
       setSort: (sort: SortMode) => patchPrefs({ sort }),
+      setView: (view: ViewMode) => patchPrefs({ view }),
+      placeOn,
+      placeMany,
       bumpStreak,
       setThoughtCursor: (thoughtCursor: number) => patchPrefs({ thoughtCursor }),
     }),
