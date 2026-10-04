@@ -25,6 +25,7 @@ const TYPES: { id: NoteType; label: string }[] = [
 function NewNoteForm() {
   const params = useSearchParams();
   const initial = (params.get("type") as NoteType) || "text";
+  const folder = params.get("folder");
   const [type, setType] = useState<NoteType>(TYPES.some((t) => t.id === initial) ? initial : "text");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -103,6 +104,7 @@ function NewNoteForm() {
       createdAt: now,
       updatedAt: now,
       tags,
+      parentId: folder || null,
     };
     upsertNote(note);
     nav.go(`/notes/${note.id}`, "down");
@@ -112,7 +114,7 @@ function NewNoteForm() {
     <Screen
       title="New Note"
       leading={
-        <button type="button" className="nav-btn" onClick={() => nav.go("/notes", "down")}>
+        <button type="button" className="nav-btn" onClick={() => nav.go(folder ? `/folders/${folder}` : "/notes", "down")}>
           Cancel
         </button>
       }
