@@ -1,0 +1,60 @@
+{
+  "name": "Draftr",
+  "version": "1.0.0",
+  "primitive": {
+    "color": {
+      "sky-100": "#E8F3FB",
+      "sky-200": "#C5D7EA",
+      "sky-300": "#B7D3EA",
+      "mint-200": "#C8EADC",
+      "mint-300": "#9AD0C1",
+      "lilac-200": "#DDD4F4",
+      "lilac-300": "#B9A6EA",
+      "sand-200": "#EFE4C8",
+      "rose-200": "#EFD0E4",
+      "yellow-300": "#F2E056",
+      "ink-800": "#243040",
+      "ink-500": "#5B6776",
+      "blue-500": "#3B74B8",
+      "blue-600": "#2F6FBF",
+      "white": "#FFFFFF"
+    },
+    "space": {
+      "1": "4px",
+      "2": "8px",
+      "3": "12px",
+      "4": "16px",
+      "5": "20px",
+      "6": "24px",
+      "8": "32px",
+      "10": "40px"
+    },
+    "radius": {
+      "pill": "999px",
+      "card": "28px",
+      "shell": "32px"
+    },
+    "font": {
+      "sans": "Outfit",
+      "serif": "Fraunces",
+      "pixel": "VT323"
+    }
+  },
+  "semantic": {
+    "color-background": "sky wash",
+    "color-foreground": "ink-800",
+    "color-primary": "blue-600",
+    "color-accent": "yellow-300",
+    "material-glass": "translucent navigation controls"
+  },
+  "component": {
+    "tab-active-bg": "yellow-300",
+    "fab-primary-bg": "white",
+    "fab-mic-bg": "lilac glass",
+    "card-todo": "mint",
+    "card-thought": "sky glass",
+    "card-audio": "lilac",
+    "card-files": "sand",
+    "card-pdf": "rose"
+  }
+}
