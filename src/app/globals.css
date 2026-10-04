@@ -39,8 +39,8 @@
   --danger: var(--ink);
   --soft: var(--fill);
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 26px -14px rgba(0, 0, 0, 0.18);
-  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.06), 0 24px 48px -18px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 14px -8px rgba(0, 0, 0, 0.16);
+  --shadow-float: 0 2px 4px rgba(0, 0, 0, 0.06), 0 18px 36px -16px rgba(0, 0, 0, 0.32);
 
   --r-panel: 18px;
   --r-ctl: 14px;
@@ -64,8 +64,8 @@
     --fill: rgba(255, 255, 255, 0.06);
     --fill-strong: rgba(255, 255, 255, 0.11);
     --veil: rgba(0, 0, 0, 0.6);
-    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 30px -16px rgba(0, 0, 0, 0.85);
-    --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 28px 56px -18px rgba(0, 0, 0, 0.95);
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 16px -10px rgba(0, 0, 0, 0.8);
+    --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 20px 40px -16px rgba(0, 0, 0, 0.9);
   }
 }
 
@@ -81,8 +81,8 @@
   --fill: rgba(255, 255, 255, 0.06);
   --fill-strong: rgba(255, 255, 255, 0.11);
   --veil: rgba(0, 0, 0, 0.6);
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 30px -16px rgba(0, 0, 0, 0.85);
-  --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 28px 56px -18px rgba(0, 0, 0, 0.95);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 16px -10px rgba(0, 0, 0, 0.8);
+  --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 20px 40px -16px rgba(0, 0, 0, 0.9);
 }
 
 /* ---------- Base ---------- */
@@ -91,17 +91,11 @@ html {
   background: var(--bg);
 }
 
-html[data-vt],
-html[data-vt] body {
-  background: transparent;
-}
-
 .ambient {
   position: fixed;
   inset: 0;
   z-index: -1;
   background: var(--bg);
-  view-transition-name: ambient;
   pointer-events: none;
 }
 
@@ -283,8 +277,6 @@ input.top-title {
   cursor: grab;
   -webkit-user-select: none;
   user-select: none;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 96px, #000 calc(100% - 132px), transparent calc(100% - 52px));
-  mask-image: linear-gradient(to bottom, transparent 0, #000 96px, #000 calc(100% - 132px), transparent calc(100% - 52px));
   opacity: 1;
   transition: opacity 200ms ease;
 }
@@ -303,7 +295,6 @@ input.top-title {
 .card {
   position: absolute;
   padding: 14px 14px 30px;
-  overflow: hidden;
   border-radius: var(--r-panel);
   background: var(--card);
   box-shadow: var(--shadow-card);
@@ -552,6 +543,7 @@ input.top-title {
 .tile {
   position: relative;
   aspect-ratio: 1 / 1.1;
+  contain: layout paint;
   padding: 14px;
   border-radius: var(--r-panel);
   background: var(--card);
@@ -1426,38 +1418,16 @@ textarea.field {
   font-weight: 600;
 }
 
-/* ---------- Page change: one short fade ---------- */
-::view-transition-group(ambient) {
-  z-index: 0;
-  animation: none;
+/* ---------- Page change: the new screen eases in ---------- */
+.screen,
+.grid-view {
+  animation: page-in 160ms ease-out both;
 }
 
-::view-transition-group(root) {
-  z-index: 2;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  mix-blend-mode: normal;
-  animation-fill-mode: both;
-}
-
-@keyframes vt-fade-out {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes vt-fade-in {
+@keyframes page-in {
   from {
     opacity: 0;
   }
-}
-
-html[data-vt]::view-transition-old(root) {
-  animation: vt-fade-out 120ms ease-out both;
-}
-html[data-vt]::view-transition-new(root) {
-  animation: vt-fade-in 200ms ease-out 30ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1467,11 +1437,5 @@ html[data-vt]::view-transition-new(root) {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
-  }
-
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none !important;
   }
 }
