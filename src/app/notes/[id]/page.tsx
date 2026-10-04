@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Check } from "@/components/Check";
 import { Dictation } from "@/components/Dictation";
-import { DocsIcon, PinFilledIcon, PinIcon, PlusIcon, ShareIcon, SparkleIcon, TrashIcon, XIcon } from "@/components/Icons";
+import { DocsIcon, EllipsisIcon, PlusIcon, TrashIcon, XIcon } from "@/components/Icons";
+import { Sheet } from "@/components/Sheet";
 import { Markup } from "@/components/Markup";
 import { Screen } from "@/components/Screen";
 import { SketchPad } from "@/components/SketchPad";
@@ -22,7 +23,7 @@ const isPdf = (name: string, url: string) => /\.pdf($|\?)/i.test(name) || url.st
 export default function NoteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const nav = useNav();
-  const { notes, ready, toggleItem, deleteNote, patchNote, pinNote, tagNote, remindNote, addItem, addSubtask, setItemDue, removeItem } = useStore();
+  const { notes, ready, toggleItem, deleteNote, patchNote, tagNote, remindNote, addItem, addSubtask, setItemDue, removeItem } = useStore();
   const note = useMemo(() => notes.find((n) => n.id === id), [notes, id]);
 
   const [title, setTitle] = useState("");
@@ -32,6 +33,7 @@ export default function NoteDetailPage() {
   const [subText, setSubText] = useState("");
   const [markSrc, setMarkSrc] = useState<string | null>(null);
   const [sketchOpen, setSketchOpen] = useState(false);
+  const [more, setMore] = useState(false);
   const [hint, setHint] = useState("");
   const loadedFor = useRef("");
   const area = useRef<HTMLTextAreaElement>(null);
@@ -91,9 +93,11 @@ export default function NoteDetailPage() {
   const file = current.attachments.find((a) => a.kind === "file");
   const audio = current.attachments.find((a) => a.kind === "audio");
 
+  const home = current.parentId && notes.some((n) => n.id === current.parentId && n.type === "folder" && !n.deletedAt) ? `/folders/${current.parentId}` : "/notes";
+
   function leave() {
     flush();
-    nav.back("/notes");
+    nav.back(home);
   }
 
   function applyBody(next: string) {
@@ -116,31 +120,9 @@ export default function NoteDetailPage() {
         </button>
       }
       trailing={
-        <>
-          <button
-            type="button"
-            className="nav-btn"
-            aria-label="Desk assistant"
-            onClick={() => openDesk({ text: `${title}\n${body}`.trim(), onApply: applyBody })}
-          >
-            <SparkleIcon size={22} />
-          </button>
-          <button type="button" className="nav-btn" aria-label={current.pinned ? "Unpin note" : "Pin note"} onClick={() => pinNote(current.id)}>
-            {current.pinned ? <PinFilledIcon size={20} /> : <PinIcon size={22} />}
-          </button>
-          <button
-            type="button"
-            className="nav-btn danger"
-            aria-label="Delete note"
-            onClick={() => {
-              flush();
-              deleteNote(current.id);
-              nav.back("/notes");
-            }}
-          >
-            <TrashIcon size={22} />
-          </button>
-        </>
+        <button type="button" className="nav-btn" aria-label="More" onClick={() => setMore(true)}>
+          <EllipsisIcon size={26} />
+        </button>
       }
     >
       <input
@@ -154,14 +136,8 @@ export default function NoteDetailPage() {
           queue({ title: e.target.value });
         }}
       />
-      {(current.pinned || current.tags?.length) && (
+      {Boolean(current.tags?.length) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {current.pinned && (
-            <span className="tag !text-[var(--ink)]">
-              <PinFilledIcon size={10} />
-              <span className="ml-1">Pinned</span>
-            </span>
-          )}
           {current.tags?.map((tag) => (
             <span key={tag} className="tag">
               {tag}
@@ -335,71 +311,105 @@ export default function NoteDetailPage() {
         </div>
       )}
 
-      <p className="group-label">Tags</p>
-      <div className="chips">
-        {TAGS.map((tag) => (
-          <button key={tag} type="button" className="chip" aria-pressed={Boolean(current.tags?.includes(tag))} onClick={() => tagNote(current.id, tag)}>
-            {tag}
+      <Sheet
+        open={more}
+        onClose={() => setMore(false)}
+        title="Note"
+        animate={false}
+        action={
+          <button type="button" className="nav-btn strong" onClick={() => setMore(false)}>
+            Done
           </button>
-        ))}
-      </div>
-
-      <div className="group mt-6">
-        <label className="cell">
-          <span className="flex-1">Remind me</span>
-          <input
-            type="datetime-local"
-            className="bg-transparent text-right text-[15px] text-[var(--muted)] outline-none"
-            value={remindValue}
-            onChange={(e) => remindNote(current.id, e.target.value ? new Date(e.target.value).toISOString() : null)}
-          />
-          {remindValue && (
-            <button
-              type="button"
-              className="grid h-7 w-7 flex-none place-items-center text-[var(--muted)]"
-              aria-label="Clear reminder"
-              onClick={(e) => {
-                e.preventDefault();
-                remindNote(current.id, null);
-              }}
-            >
-              <XIcon size={16} />
+        }
+      >
+        <p className="group-label !mt-2">Tags</p>
+        <div className="chips">
+          {TAGS.map((tag) => (
+            <button key={tag} type="button" className="chip" aria-pressed={Boolean(current.tags?.includes(tag))} onClick={() => tagNote(current.id, tag)}>
+              {tag}
             </button>
-          )}
-        </label>
-        <button type="button" className="cell" onClick={() => setSketchOpen((v) => !v)}>
-          <span className="flex-1 text-[var(--tint)]">{sketchOpen ? "Hide sketch pad" : "Add a sketch"}</span>
-        </button>
-        {sketchOpen && (
-          <div className="p-3">
-            <SketchPad
-              onSave={(url) => {
-                flush();
-                patchNote(current.id, { attachments: [...current.attachments, { id: newId(), kind: "sketch", url, name: "sketch.png" }] });
-                setSketchOpen(false);
-              }}
+          ))}
+        </div>
+
+        <div className="group mt-5">
+          <label className="cell">
+            <span className="flex-1">Remind me</span>
+            <input
+              type="datetime-local"
+              className="bg-transparent text-right text-[15px] text-[var(--muted)] outline-none"
+              value={remindValue}
+              onChange={(e) => remindNote(current.id, e.target.value ? new Date(e.target.value).toISOString() : null)}
             />
-          </div>
-        )}
-        <button
-          type="button"
-          className="cell"
-          onClick={async () => {
-            const result = await shareText(current.title, noteToText(current));
-            setHint(result === "shared" ? "Shared" : result === "copied" ? "Copied to clipboard" : "Could not share");
-            window.setTimeout(() => setHint(""), 2400);
-          }}
-        >
-          <span className="flex-1 text-[var(--tint)]">Share</span>
-          <span className="text-[var(--tint)]">
-            <ShareIcon size={20} />
-          </span>
-        </button>
-        <button type="button" className="cell" onClick={() => downloadText(`${current.title || "note"}.txt`, noteToText(current))}>
-          <span className="flex-1 text-[var(--tint)]">Download as text</span>
-        </button>
-      </div>
-      {hint && <p className="group-foot fade-up">{hint}</p>}
+            {remindValue && (
+              <button
+                type="button"
+                className="grid h-7 w-7 flex-none place-items-center text-[var(--muted)]"
+                aria-label="Clear reminder"
+                onClick={(e) => {
+                  e.preventDefault();
+                  remindNote(current.id, null);
+                }}
+              >
+                <XIcon size={16} />
+              </button>
+            )}
+          </label>
+          <button type="button" className="cell" onClick={() => setSketchOpen((v) => !v)}>
+            <span className="flex-1">{sketchOpen ? "Hide sketch pad" : "Add a sketch"}</span>
+          </button>
+          {sketchOpen && (
+            <div className="p-3">
+              <SketchPad
+                onSave={(url) => {
+                  flush();
+                  patchNote(current.id, { attachments: [...current.attachments, { id: newId(), kind: "sketch", url, name: "sketch.png" }] });
+                  setSketchOpen(false);
+                }}
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            className="cell"
+            onClick={() => {
+              setMore(false);
+              openDesk({ text: `${title}\n${body}`.trim(), onApply: applyBody });
+            }}
+          >
+            <span className="flex-1">Ask Desk about this note</span>
+          </button>
+          <button
+            type="button"
+            className="cell"
+            onClick={async () => {
+              const result = await shareText(current.title, noteToText(current));
+              setHint(result === "shared" ? "Shared" : result === "copied" ? "Copied to clipboard" : "Could not share");
+              window.setTimeout(() => setHint(""), 2400);
+            }}
+          >
+            <span className="flex-1">Share</span>
+          </button>
+          <button type="button" className="cell" onClick={() => downloadText(`${current.title || "note"}.txt`, noteToText(current))}>
+            <span className="flex-1">Download as text</span>
+          </button>
+        </div>
+        {hint && <p className="group-foot">{hint}</p>}
+
+        <div className="group mt-5">
+          <button
+            type="button"
+            className="cell justify-center font-semibold"
+            onClick={() => {
+              flush();
+              setMore(false);
+              deleteNote(current.id);
+              nav.back(home);
+            }}
+          >
+            Delete note
+          </button>
+        </div>
+      </Sheet>
 
       {markSrc && (
         <Markup
