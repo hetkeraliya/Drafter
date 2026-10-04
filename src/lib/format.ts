@@ -18,6 +18,7 @@ export const TYPE_LABEL: Record<NoteType, string> = {
   images: "Images",
   audio: "Audio",
   file: "Files",
+  folder: "Folders",
 };
 
 export interface Section {
