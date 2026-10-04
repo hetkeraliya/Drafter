@@ -18,6 +18,8 @@ interface Row {
   deleted_at: string | null;
   parent_id: string | null;
   position: number | null;
+  canvas_x: number | null;
+  canvas_y: number | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -38,6 +40,8 @@ export function rowToNote(row: Row): Note {
     deletedAt: row.deleted_at,
     parentId: row.parent_id,
     position: row.position,
+    canvasX: row.canvas_x,
+    canvasY: row.canvas_y,
     createdAt: row.created_at || now,
     updatedAt: row.updated_at || now,
   };
@@ -62,6 +66,8 @@ function noteToRow(note: Note, userId: string) {
     deleted_at: note.deletedAt || null,
     parent_id: note.parentId || null,
     position: typeof note.position === "number" ? note.position : null,
+    canvas_x: typeof note.canvasX === "number" ? note.canvasX : null,
+    canvas_y: typeof note.canvasY === "number" ? note.canvasY : null,
     created_at: note.createdAt,
     updated_at: note.updatedAt,
   };
