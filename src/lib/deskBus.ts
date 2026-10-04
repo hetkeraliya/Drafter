@@ -1,5 +1,6 @@
 type DeskRequest = {
   text: string;
+  question?: string;
   onApply?: (text: string) => void;
 };
 
