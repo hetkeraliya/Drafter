@@ -1,0 +1,9 @@
+Delete these from the repo before pushing (they are replaced by new components):
+
+src/app/motion/            (whole folder)
+src/components/NoteCard.tsx
+src/components/NoteRow.tsx
+src/components/Fab.tsx
+src/components/Phone.tsx
+src/components/StatusBar.tsx
+src/components/ToolDock.tsx
