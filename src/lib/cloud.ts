@@ -16,6 +16,8 @@ interface Row {
   attachments: Attachment[] | null;
   remind_at: string | null;
   deleted_at: string | null;
+  parent_id: string | null;
+  position: number | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -34,6 +36,8 @@ export function rowToNote(row: Row): Note {
     attachments: row.attachments || [],
     remindAt: row.remind_at,
     deletedAt: row.deleted_at,
+    parentId: row.parent_id,
+    position: row.position,
     createdAt: row.created_at || now,
     updatedAt: row.updated_at || now,
   };
@@ -56,6 +60,8 @@ function noteToRow(note: Note, userId: string) {
     attachments,
     remind_at: note.remindAt || null,
     deleted_at: note.deletedAt || null,
+    parent_id: note.parentId || null,
+    position: typeof note.position === "number" ? note.position : null,
     created_at: note.createdAt,
     updated_at: note.updatedAt,
   };
