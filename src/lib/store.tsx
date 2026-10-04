@@ -14,7 +14,7 @@ import { mergeNotes, pullNotes, pushNotes, removeNotes } from "./cloud";
 import { makeSeedNotes } from "./seed";
 import { getSupabase } from "./supabase";
 import { applyTheme } from "./theme";
-import { childrenOf, descendantIds, ensurePositions, positionOf } from "./tree";
+import { adoptLoose, childrenOf, descendantIds, ensurePositions, positionOf } from "./tree";
 import { todayKey } from "./thoughts";
 import type { ChecklistItem, Note, PaperTheme, Prefs, SessionUser, SortMode, ViewMode } from "./types";
 
@@ -145,6 +145,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     setReady(true);
   }, []);
+
+  // The top level only holds folders: loose notes are gathered into a folder called "Notes".
+  useEffect(() => {
+    if (!ready) return;
+    const next = adoptLoose(notes);
+    if (next !== notes) setNotes(next);
+  }, [notes, ready]);
 
   useEffect(() => {
     notesRef.current = notes;
